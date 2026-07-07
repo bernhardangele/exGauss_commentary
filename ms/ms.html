@@ -1,0 +1,1563 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.38">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Jason Geller">
+<meta name="dcterms.date" content="2026-07-07">
+<meta name="keywords" content="ex-Gaussian, reaction time, Bayesian estimation, brms, parameterization">
+
+<title>This Is Not the ex-Gaussian Model You Are Looking For: On the Default Parameterization of Bayesian ex-Gaussian Models in brms</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+  margin-bottom: 0em;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="ms_files/libs/clipboard/clipboard.min.js"></script>
+<script src="ms_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="ms_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="ms_files/libs/quarto-html/popper.min.js"></script>
+<script src="ms_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="ms_files/libs/quarto-html/anchor.min.js"></script>
+<link href="ms_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="ms_files/libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="ms_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="ms_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="ms_files/libs/bootstrap/bootstrap-138a6193a3bd40baf1e627da441a4734.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="fullcontent quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">This Is Not the ex-Gaussian Model You Are Looking For: On the Default Parameterization of Bayesian ex-Gaussian Models in brms</h1>
+</div>
+
+
+<div class="quarto-title-meta-author">
+  <div class="quarto-title-meta-heading">Author</div>
+  <div class="quarto-title-meta-heading">Affiliation</div>
+  
+    <div class="quarto-title-meta-contents">
+    <p class="author"><a href="https://www.drjasongeller.com">Jason Geller</a> <a href="mailto:drjasongeller@gmail.com" class="quarto-title-author-email"><i class="bi bi-envelope"></i></a> <a href="https://orcid.org/0000-0002-7459-4505" class="quarto-title-author-orcid"> <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2ZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDo1N0NEMjA4MDI1MjA2ODExOTk0QzkzNTEzRjZEQTg1NyIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDozM0NDOEJGNEZGNTcxMUUxODdBOEVCODg2RjdCQ0QwOSIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDozM0NDOEJGM0ZGNTcxMUUxODdBOEVCODg2RjdCQ0QwOSIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ1M1IE1hY2ludG9zaCI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ4bXAuaWlkOkZDN0YxMTc0MDcyMDY4MTE5NUZFRDc5MUM2MUUwNEREIiBzdFJlZjpkb2N1bWVudElEPSJ4bXAuZGlkOjU3Q0QyMDgwMjUyMDY4MTE5OTRDOTM1MTNGNkRBODU3Ii8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+84NovQAAAR1JREFUeNpiZEADy85ZJgCpeCB2QJM6AMQLo4yOL0AWZETSqACk1gOxAQN+cAGIA4EGPQBxmJA0nwdpjjQ8xqArmczw5tMHXAaALDgP1QMxAGqzAAPxQACqh4ER6uf5MBlkm0X4EGayMfMw/Pr7Bd2gRBZogMFBrv01hisv5jLsv9nLAPIOMnjy8RDDyYctyAbFM2EJbRQw+aAWw/LzVgx7b+cwCHKqMhjJFCBLOzAR6+lXX84xnHjYyqAo5IUizkRCwIENQQckGSDGY4TVgAPEaraQr2a4/24bSuoExcJCfAEJihXkWDj3ZAKy9EJGaEo8T0QSxkjSwORsCAuDQCD+QILmD1A9kECEZgxDaEZhICIzGcIyEyOl2RkgwAAhkmC+eAm0TAAAAABJRU5ErkJggg=="></a></p>
+  </div>
+  <div class="quarto-title-meta-contents">
+        <p class="affiliation">
+            Boston College
+          </p>
+      </div>
+  </div>
+
+<div class="quarto-title-meta">
+
+      
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">July 7, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+<div>
+  <div class="abstract">
+    <div class="block-title">Abstract</div>
+    <p>The ex-Gaussian distribution is a popular tool for analyzing reaction-time (RT) data because it distinguishes the central portion of the distribution, summarized by the Gaussian parameters <span class="math inline">\(\mu\)</span> and <span class="math inline">\(\sigma\)</span>, from its positively skewed tail, summarized by the exponential parameter <span class="math inline">\(\tau\)</span>. Bayesian ex-Gaussian models can now be fit easily with the {brms} package in R, but the default parameterization contains a subtle pitfall: the parameter labeled <code>mu</code> represents the mean of the full ex-Gaussian distribution, <span class="math inline">\(E(RT) = \mu + \tau\)</span>, rather than the location of the Gaussian component. Consequently, effects estimated on the default <code>mu</code> describe changes in the overall mean and can obscure genuine shifts in the Gaussian component. Using simulated data in which the Gaussian location and the exponential tail move in opposite directions—holding the overall mean constant—I show that the default model returns a null effect on <code>mu</code>, whereas a classical parameterization recovers the true 50-ms shift. I provide annotated {brms} code for both parameterizations and argue that convenient software defaults should not replace careful attention to what a model’s parameters actually estimate.</p>
+  </div>
+</div>
+
+<div>
+  <div class="keywords">
+    <div class="block-title">Keywords</div>
+    <p>ex-Gaussian, reaction time, Bayesian estimation, brms, parameterization</p>
+  </div>
+</div>
+
+</header>
+
+
+<p>Over the past two decades, psychology has seen a substantial increase in the application of Bayesian data analysis methods as a supplement to widely used frequentist methods <span class="citation" data-cites="pfadt2025methodological">(<a href="#ref-pfadt2025methodological" role="doc-biblioref"><span class="nocase">Pfadt et al.</span>, 2025</a>)</span>. This shift has been driven by the increasing availability of computational tools that have made fitting Bayesian models both practical and efficient. Programming languages like R <span class="citation" data-cites="R">(<a href="#ref-R" role="doc-biblioref">R Core Team, 2024</a>)</span>, Python <span class="citation" data-cites="python">(<a href="#ref-python" role="doc-biblioref">Van Rossum &amp; Drake, 2009</a>)</span>, and Julia <span class="citation" data-cites="julia">(<a href="#ref-julia" role="doc-biblioref">Bezanson et al., 2017</a>)</span> provide libraries and packages that allow researchers to fit Bayesian models with little technical overhead. In addition, growing dissatisfaction with null-hypothesis significance testing (NHST) and its associated pitfalls (e.g., p-value misinterpretation and dichotomous thinking), together with the replication crisis and credibility revolution <span class="citation" data-cites="vazire2018">(<a href="#ref-vazire2018" role="doc-biblioref">Vazire, 2018</a>)</span>, has pushed many researchers toward statistical alternatives.</p>
+<p>One domain that has seen an increase in the adoption of Bayesian methods is the analysis of response time (RT) data, where RTs are routinely used as measures of processing speed, decision difficulty, and cognitive efficiency. Traditionally, RT data have often been analyzed using summary statistics such as the mean or median. However, RT distributions are typically positively skewed, bounded at zero, and characterized by substantial variability both within and between individuals <span class="citation" data-cites="wilcox">(<a href="#ref-wilcox" role="doc-biblioref">Wilcox &amp; Keselman, 2003</a>)</span>. Moreover, experimental manipulations may affect not only the central tendency of the distribution but also its variability or upper tail. Consequently, analyses based solely on the mean or median can obscure theoretically meaningful distributional effects, motivating calls to move beyond mean-based analyses of RT data <span class="citation" data-cites="balota2011">(<a href="#ref-balota2011" role="doc-biblioref">Balota &amp; Yap, 2011</a>)</span>.</p>
+<p>One way to move beyond the mean is to model the full shape of the RT distribution. Mathematical models provide a flexible way to do so, allowing researchers to draw inferences about the psychological processes—such as memory, attention, and language—that give rise to observed response times. One model that has become especially popular for this purpose is the ex-Gaussian model <span class="citation" data-cites="ratcliff1976">(<a href="#ref-ratcliff1976" role="doc-biblioref">Ratcliff &amp; Murdock, 1976</a>)</span>. The ex-Gaussian distribution is formed by the convolution of a Gaussian distribution and an exponential distribution and is characterized by three parameters: μ, σ, and τ. The parameter μ represents the mean of the Gaussian component, whereas σ represents its standard deviation. The parameter τ represents both the mean and standard deviation of the exponential component and primarily governs the length of the distribution’s positively skewed upper tail. The overall mean of the ex-Gaussian distribution is μ + τ, and its variance is σ² + τ². Although these parameters have been used to infer cognitive processes such as automaticity and cognitive control/inhibition, these interpretations are not inherent to the parameters and should be made cautiously <span class="citation" data-cites="matzke2009">(<a href="#ref-matzke2009" role="doc-biblioref">Matzke &amp; Wagenmakers, 2009</a>)</span>.</p>
+<p>The ex-Gaussian model can be fit within a Bayesian framework relatively easily using the {brms} package in R which provides a high-level interface to Stan <span class="citation" data-cites="stan">(<a href="#ref-stan" role="doc-biblioref">Carpenter et al., 2017</a>)</span>. The package supports a wide range of response distributions, including the ex-Gaussian family, and allows researchers to incorporate complex model structures at both the participant and item levels as well as across different parameters. This accessibility has contributed to the growing use of Bayesian ex-Gaussian models in reaction-time research. However, an important complication arises from the default parameterization used by {brms}. Although the model is straightforward to estimate, its default specification does not necessarily provide direct access to the parameter-specific comparisons researchers often wish to make.</p>
+<p>The central problem is that the parameter labeled <span class="math inline">\(\mu\)</span> in the default {brms} ex-Gaussian model does not correspond to the mean of the Gaussian component in the conventional parameterization. Instead, the quantity modeled as <span class="math inline">\(\mu\)</span> in {brms} represents the mean of the full ex-Gaussian distribution. Under the conventional parameterization, this quantity is equal to <span class="math inline">\(\mu_{\mathrm{Gaussian}} + \tau\)</span>. Consequently, regression effects estimated for the default <span class="math inline">\(\mu\)</span> parameter reflect changes in a composite quantity that combines the Gaussian location and exponential tail components. Such effects therefore cannot be interpreted directly as changes in the Gaussian component or in typical response speed. To recover the conventional Gaussian mean, it is necessary to derive it from the model parameters as <span class="math inline">\(\mu_{\mathrm{Gaussian}} = \mu_{\mathrm{brms}} - \tau\)</span> or to specify an alternative parameterization that models the conventional ex-Gaussian parameters directly.</p>
+<p>In this commentary, I demonstrate what the default parameterization of the ex-Gaussian model in <strong>brms</strong> actually provides and then show how to specify the model so that its parameters correspond to the conventional ex-Gaussian parameters used in reaction-time research. The goal is to improve the accuracy and interpretability of inferences drawn from these models. This issue is particularly important because the ex-Gaussian distribution is widely used to distinguish changes in the central portion of the RT distribution from changes in its posietively skewed tail.</p>
+<section id="example" class="level2">
+<h2 class="anchored" data-anchor-id="example">Example</h2>
+<p>To demonstrate the issue with fitting the default ex-Gaussian model in {brms}, I simulate data using a comparison adapted from one of my own studies <span class="citation" data-cites="geller2025">(<a href="#ref-geller2025" role="doc-biblioref">Geller et al., 2025</a>)</span> in R [<span class="citation" data-cites="R">R Core Team (<a href="#ref-R" role="doc-biblioref">2024</a>)</span>; version 4.6.0]. This allows the methodological issue to be illustrated without singling out any particular researchers or journals, although published examples of this interpretive problem do exist.</p>
+<p>In <span class="citation" data-cites="geller2025">Geller et al. (<a href="#ref-geller2025" role="doc-biblioref">2025</a>)</span>, we examined how perceptual disfluency—manipulated by varying the level of blur applied to words—influenced reaction times in a lexical decision task (i.e., is this letter string a word?), and whether these effects were related to recognition memory. In that study, low blur affected early stages of encoding, reflected in the Gaussian location parameter <span class="math inline">\(\mu\)</span>, but not the later, tail component captured by <span class="math inline">\(\tau\)</span>. For the present illustration, however, I construct a sharper scenario in which <span class="math inline">\(\mu\)</span> and <span class="math inline">\(\tau\)</span> differ in opposite directions so that the two conditions share the same expected reaction time. Using the <code>rexgaussian2()</code> function from the {brms.exgaussian} package, I simulate ex-Gaussian data for clearly presented and low-blur words in which <span class="math inline">\(\mu\)</span> is set to 500 ms and 550 ms, <span class="math inline">\(\tau\)</span> to 100 ms and 50 ms, and <span class="math inline">\(\sigma\)</span> to 60 ms in both conditions (see <a href="#tbl-exgauss" class="quarto-xref">Table&nbsp;1</a>).</p>
+<div id="tbl-exgauss" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-exgauss-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;1: Data-generating ex-Gaussian parameters for the two simulated conditions.
+</figcaption>
+<div aria-describedby="tbl-exgauss-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<!-- preamble start -->
+
+    <script src="https://cdn.jsdelivr.net/gh/vincentarelbundock/tinytable@main/inst/tinytable.js"></script>
+
+    <script>
+      // Create table-specific functions using external factory
+      const tableFns_0jcicr7qgo3g6y2g6tp9 = TinyTable.createTableFunctions("tinytable_0jcicr7qgo3g6y2g6tp9");
+      // tinytable span after
+      window.addEventListener('load', function () {
+          var cellsToStyle = [
+            // tinytable style arrays after
+          { positions: [ { i: '2', j: 1 }, { i: '2', j: 2 }, { i: '2', j: 3 }, { i: '2', j: 4 }, { i: '2', j: 5 } ], css_id: 'tinytable_css_v9sc2p104yiy6t8uykuk',}, 
+          { positions: [ { i: '0', j: 1 }, { i: '0', j: 2 }, { i: '0', j: 3 }, { i: '0', j: 4 }, { i: '0', j: 5 } ], css_id: 'tinytable_css_ft77yb7h6xa4lsdh6jxy',}, 
+          ];
+
+          // Loop over the arrays to style the cells
+          cellsToStyle.forEach(function (group) {
+              group.positions.forEach(function (cell) {
+                  tableFns_0jcicr7qgo3g6y2g6tp9.styleCell(cell.i, cell.j, group.css_id);
+              });
+          });
+      });
+    </script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/vincentarelbundock/tinytable@main/inst/tinytable.css">
+    <style>
+    /* tinytable css entries after */
+    #tinytable_0jcicr7qgo3g6y2g6tp9 td.tinytable_css_v9sc2p104yiy6t8uykuk, #tinytable_0jcicr7qgo3g6y2g6tp9 th.tinytable_css_v9sc2p104yiy6t8uykuk {  position: relative; --border-bottom: 1; --border-left: 0; --border-right: 0; --border-top: 0; --line-color-bottom: var(--tt-line-color); --line-color-left: var(--tt-line-color); --line-color-right: var(--tt-line-color); --line-color-top: var(--tt-line-color); --line-width-bottom: 0.08em; --line-width-left: 0.1em; --line-width-right: 0.1em; --line-width-top: 0.1em; --trim-bottom-left: 0%; --trim-bottom-right: 0%; --trim-left-bottom: 0%; --trim-left-top: 0%; --trim-right-bottom: 0%; --trim-right-top: 0%; --trim-top-left: 0%; --trim-top-right: 0%;  }
+    #tinytable_0jcicr7qgo3g6y2g6tp9 td.tinytable_css_ft77yb7h6xa4lsdh6jxy, #tinytable_0jcicr7qgo3g6y2g6tp9 th.tinytable_css_ft77yb7h6xa4lsdh6jxy {  position: relative; --border-bottom: 1; --border-left: 0; --border-right: 0; --border-top: 1; --line-color-bottom: var(--tt-line-color); --line-color-left: var(--tt-line-color); --line-color-right: var(--tt-line-color); --line-color-top: var(--tt-line-color); --line-width-bottom: 0.05em; --line-width-left: 0.1em; --line-width-right: 0.1em; --line-width-top: 0.08em; --trim-bottom-left: 0%; --trim-bottom-right: 0%; --trim-left-bottom: 0%; --trim-left-top: 0%; --trim-right-bottom: 0%; --trim-right-top: 0%; --trim-top-left: 0%; --trim-top-right: 0%;  }
+    </style>
+    <div class="container">
+      <table class="tinytable" id="tinytable_0jcicr7qgo3g6y2g6tp9" style="width: auto; margin-left: auto; margin-right: auto;" data-quarto-disable-processing="true">
+        
+        <thead>
+              <tr>
+                <th scope="col" data-row="0" data-col="1">Blur</th>
+                <th scope="col" data-row="0" data-col="2">μ</th>
+                <th scope="col" data-row="0" data-col="3">σ</th>
+                <th scope="col" data-row="0" data-col="4">τ</th>
+                <th scope="col" data-row="0" data-col="5">Expected RT</th>
+              </tr>
+        </thead>
+        
+        <tbody>
+                <tr>
+                  <td data-row="1" data-col="1">Clear</td>
+                  <td data-row="1" data-col="2">500</td>
+                  <td data-row="1" data-col="3">60</td>
+                  <td data-row="1" data-col="4">100</td>
+                  <td data-row="1" data-col="5">600</td>
+                </tr>
+                <tr>
+                  <td data-row="2" data-col="1">Low-Blur</td>
+                  <td data-row="2" data-col="2">550</td>
+                  <td data-row="2" data-col="3">60</td>
+                  <td data-row="2" data-col="4">50</td>
+                  <td data-row="2" data-col="5">600</td>
+                </tr>
+        </tbody>
+      </table>
+    </div>
+<!-- hack to avoid NA insertion in last line -->
+</div>
+</figure>
+</div>
+<p>We sample with replacement 10000 times to get the dataset we want to use.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Number of simulated trials per condition (200 observations in total).</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>n_per_group <span class="ot">&lt;-</span> <span class="dv">100</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># One row per trial, labelled by Blur condition (Clear is the reference level).</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>d <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">Blur =</span> <span class="fu">factor</span>(</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">rep</span>(<span class="fu">c</span>(<span class="st">"Clear"</span>, <span class="st">"Low-Blur"</span>), <span class="at">each =</span> n_per_group),</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"Clear"</span>, <span class="st">"Low-Blur"</span>)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Row index (1 = Clear, 2 = Low-Blur) used to look up each trial's parameters.</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>parameter_index <span class="ot">&lt;-</span> <span class="fu">as.integer</span>(d<span class="sc">$</span>Blur)</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="co"># Draw reaction times from the ex-Gaussian using each trial's condition values.</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>d<span class="sc">$</span>rt <span class="ot">&lt;-</span> brms.exgaussian<span class="sc">::</span><span class="fu">rexgaussian2</span>(</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>  <span class="at">n =</span> <span class="fu">nrow</span>(d),</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>  <span class="at">mu =</span> parameters<span class="sc">$</span>mu[parameter_index],</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>  <span class="at">sigma =</span> parameters<span class="sc">$</span>sigma[parameter_index],</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>  <span class="at">tau =</span> parameters<span class="sc">$</span>tau[parameter_index]</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<section id="estimating-ex-gaussian-parameters-with-easystats" class="level3">
+<h3 class="anchored" data-anchor-id="estimating-ex-gaussian-parameters-with-easystats">Estimating Ex-Gaussian Parameters with <code>{easystats}</code></h3>
+<p>The <code>{modelbased}</code> package, which is part of the <code>{easystats}</code> ecosystem, can be used to obtain condition-specific posterior estimates from a fitted <code>brms</code> model. The <code>estimate_means()</code> function returns estimated parameters for each condition, whereas <code>estimate_contrasts()</code> computes differences between conditions.</p>
+<p>As shown in <a href="#tbl-exgauss" class="quarto-xref">Table&nbsp;1</a>, the present data were generated so that the two conditions have the same expected reaction time but differ in the Gaussian and exponential components of the ex-Gaussian distribution.</p>
+<p>Under the classical ex-Gaussian parameterization, the expected response is</p>
+<p><span class="math display">\[E(RT) = \mu + \tau.\]</span></p>
+<p>Thus, the 50-ms increase in <span class="math inline">\(\mu\)</span> for the Low-Blur condition is offset by a 50-ms decrease in <span class="math inline">\(\tau\)</span>. The expected RT is therefore 600 ms in both conditions.</p>
+</section>
+</section>
+<section id="default-brms-parameterization" class="level2">
+<h2 class="anchored" data-anchor-id="default-brms-parameterization">Default <code>brms</code> Parameterization</h2>
+<p>We first fit the default <code>brms</code> ex-Gaussian model. In this parameterization, the parameter labeled <code>mu</code> represents the expected value of the full ex-Gaussian distribution rather than the location of its Gaussian component.</p>
+<p>The exponential component is labeled <code>beta</code>. On the response scale, <code>beta</code> corresponds to the classical ex-Gaussian parameter <span class="math inline">\(\tau\)</span>:</p>
+<p><span class="math display">\[\beta_{\texttt{brms}} = \tau_{\text{classical}}.\]</span></p>
+<p>Thus, <code>beta</code> and <span class="math inline">\(\tau\)</span> are not substantively different quantities. Both represent the mean of the exponential component. The difference is primarily one of notation. The important difference between the default <code>brms</code> model and the classical parameterization concerns <code>mu</code>:</p>
+<p><span class="math display">\[\mu_{\texttt{brms}} = \mu_{\text{classical}} + \tau.\]</span></p>
+<p>In other words, the default <code>brms</code> parameterization uses <code>mu</code> for the expected value of the complete ex-Gaussian distribution, whereas the classical parameterization uses <span class="math inline">\(\mu\)</span> for the location of the Gaussian component.</p>
+<p>Both the expected response and the exponential component are allowed to vary across conditions.</p>
+<section id="prior-specification" class="level3">
+<h3 class="anchored" data-anchor-id="prior-specification">Prior Specification</h3>
+<p>The priors were selected to reflect the known scale of the simulated data while remaining sufficiently broad to allow the model to recover deviations from the generating values.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>priors_default <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="co"># mu intercept: centered at 600 ms, the expected RT (E(RT)) of the reference</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="co"># condition in this default parameterization.</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">prior</span>(</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">normal</span>(<span class="dv">600</span>, <span class="dv">100</span>),</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">class =</span> <span class="st">"Intercept"</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Effect of Blur on mu: centered at 0 (no assumed direction).</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">prior</span>(</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">normal</span>(<span class="dv">0</span>, <span class="dv">50</span>),</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">class =</span> <span class="st">"b"</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>  <span class="co"># beta (exponential mean) intercept, on the log scale: exp(log(100)) = 100 ms.</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">prior</span>(</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">normal</span>(<span class="fu">log</span>(<span class="dv">100</span>), <span class="fl">0.5</span>),</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">class =</span> <span class="st">"Intercept"</span>,</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">dpar =</span> <span class="st">"beta"</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Effect of Blur on beta (log scale): centered at 0 (a ratio of 1).</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">prior</span>(</span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    <span class="fu">normal</span>(<span class="dv">0</span>, <span class="fl">0.5</span>),</span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">class =</span> <span class="st">"b"</span>,</span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">dpar =</span> <span class="st">"beta"</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>The intercept prior for the primary <code>mu</code> submodel is</p>
+<p><span class="math display">\[\mu_{\text{Intercept}}
+\sim
+\mathcal{N}(600,100).\]</span></p>
+<p>We center this prior at 600 ms because, in the default <code>brms</code> parameterization, <code>mu</code> represents the expected RT. The simulated expected RT for the reference condition is</p>
+<p><span class="math display">\[500 + 100 = 600 \text{ ms}.\]</span></p>
+<p>The standard deviation of 100 ms makes the prior informative about the plausible scale of RTs without tightly constraining the intercept to equal exactly 600 ms.</p>
+<p>The prior on the <code>Blur</code> coefficient is</p>
+<p><span class="math display">\[b_{\text{Blur}}
+\sim
+\mathcal{N}(0,50).\]</span></p>
+<p>This prior is centered at zero because, before observing the data, positive and negative condition effects are both plausible. A standard deviation of 50 ms allows substantial differences between conditions while placing less prior mass on implausibly large effects.</p>
+<p>The <code>beta</code> parameter is positive and uses a log link. Its intercept is therefore modeled on the log scale:</p>
+<p><span class="math display">\[\log(\beta_{\text{Clear}})
+\sim
+\mathcal{N}\left(\log(100),0.5\right).\]</span></p>
+<p>The prior is centered at <span class="math inline">\(\log(100)\)</span> because the simulated value of the exponential mean for the reference condition is 100 ms. After applying the inverse-link transformation, the prior is centered approximately around</p>
+<p><span class="math display">\[\beta_{\text{Clear}} = 100 \text{ ms}.\]</span></p>
+<p>The standard deviation of 0.5 is on the log scale. It therefore represents multiplicative rather than additive uncertainty.</p>
+<p>The prior on the effect of <code>Blur</code> on <code>beta</code> is</p>
+<p><span class="math display">\[b_{\beta,\text{Blur}}
+\sim
+\mathcal{N}(0,0.5).\]</span></p>
+<p>Because this coefficient is also on the log scale, a value of zero represents no difference between conditions:</p>
+<p><span class="math display">\[\exp(0)=1.\]</span></p>
+<p>The simulated change from 100 ms to 50 ms corresponds to the log ratio</p>
+<p><span class="math display">\[\log\left(\frac{50}{100}\right) = \log(0.5) \approx -0.693.\]</span></p>
+<p>The prior <span class="math inline">\(\mathcal{N}(0,0.5)\)</span> places reasonable prior mass near this value while still favoring smaller differences.</p>
+<p>The model can then be fit as follows:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>fit_brms <span class="ot">&lt;-</span> <span class="fu">brm</span>(</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bf</span>(</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    rt <span class="sc">~</span> Blur,      <span class="co"># mu submodel: here mu is E(RT), not the Gaussian location</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    sigma <span class="sc">~</span> <span class="dv">1</span>,      <span class="co"># constant Gaussian SD</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    beta <span class="sc">~</span> Blur     <span class="co"># exponential mean (the classical tau), allowed to vary</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> d,</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">prior =</span> priors_default,</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">family =</span> <span class="fu">exgaussian</span>(),   <span class="co"># brms's built-in ex-Gaussian family</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">chains =</span> <span class="dv">2</span>,</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">iter =</span> <span class="dv">2000</span>,</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">warmup =</span> <span class="dv">500</span>,</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>  <span class="at">backend =</span> <span class="st">"cmdstanr"</span>,</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>  <span class="at">cores =</span> <span class="dv">4</span>,</span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>  <span class="at">seed =</span> <span class="dv">1234</span>              <span class="co"># reproducible draws</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="estimating-the-expected-response" class="level3">
+<h3 class="anchored" data-anchor-id="estimating-the-expected-response">Estimating the Expected Response</h3>
+<p>Condition-specific estimates of the expected response can be obtained with <code>estimate_means()</code> and setting <code>predict</code> argument to “mu”:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Default model: per-condition mu, which equals E(RT) in this parameterization.</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>overall_means <span class="ot">&lt;-</span> <span class="fu">estimate_means</span>(</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  fit_brms,</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">by =</span> <span class="st">"Blur"</span>,</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">predict =</span> <span class="st">"mu"</span>,</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">centrality =</span> <span class="st">"mean"</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="tbl-default-means" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-default-means-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;2: Estimated expected response, <span class="math inline">\(E(RT)\)</span>, by condition from the default brms model.
+</figcaption>
+<div aria-describedby="tbl-default-means-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<!-- preamble start -->
+
+    <script src="https://cdn.jsdelivr.net/gh/vincentarelbundock/tinytable@main/inst/tinytable.js"></script>
+
+    <script>
+      // Create table-specific functions using external factory
+      const tableFns_vonskumz34tcbd6rzcfe = TinyTable.createTableFunctions("tinytable_vonskumz34tcbd6rzcfe");
+      // tinytable span after
+      window.addEventListener('load', function () {
+          var cellsToStyle = [
+            // tinytable style arrays after
+          { positions: [ { i: '2', j: 1 }, { i: '2', j: 2 }, { i: '2', j: 3 }, { i: '2', j: 4 } ], css_id: 'tinytable_css_1woogtjpzfa3j145byzf',}, 
+          { positions: [ { i: '0', j: 1 }, { i: '0', j: 2 }, { i: '0', j: 3 }, { i: '0', j: 4 } ], css_id: 'tinytable_css_r40pmxw3rr51vd9nb5dl',}, 
+          ];
+
+          // Loop over the arrays to style the cells
+          cellsToStyle.forEach(function (group) {
+              group.positions.forEach(function (cell) {
+                  tableFns_vonskumz34tcbd6rzcfe.styleCell(cell.i, cell.j, group.css_id);
+              });
+          });
+      });
+    </script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/vincentarelbundock/tinytable@main/inst/tinytable.css">
+    <style>
+    /* tinytable css entries after */
+    #tinytable_vonskumz34tcbd6rzcfe td.tinytable_css_1woogtjpzfa3j145byzf, #tinytable_vonskumz34tcbd6rzcfe th.tinytable_css_1woogtjpzfa3j145byzf {  position: relative; --border-bottom: 1; --border-left: 0; --border-right: 0; --border-top: 0; --line-color-bottom: var(--tt-line-color); --line-color-left: var(--tt-line-color); --line-color-right: var(--tt-line-color); --line-color-top: var(--tt-line-color); --line-width-bottom: 0.08em; --line-width-left: 0.1em; --line-width-right: 0.1em; --line-width-top: 0.1em; --trim-bottom-left: 0%; --trim-bottom-right: 0%; --trim-left-bottom: 0%; --trim-left-top: 0%; --trim-right-bottom: 0%; --trim-right-top: 0%; --trim-top-left: 0%; --trim-top-right: 0%;  }
+    #tinytable_vonskumz34tcbd6rzcfe td.tinytable_css_r40pmxw3rr51vd9nb5dl, #tinytable_vonskumz34tcbd6rzcfe th.tinytable_css_r40pmxw3rr51vd9nb5dl {  position: relative; --border-bottom: 1; --border-left: 0; --border-right: 0; --border-top: 1; --line-color-bottom: var(--tt-line-color); --line-color-left: var(--tt-line-color); --line-color-right: var(--tt-line-color); --line-color-top: var(--tt-line-color); --line-width-bottom: 0.05em; --line-width-left: 0.1em; --line-width-right: 0.1em; --line-width-top: 0.08em; --trim-bottom-left: 0%; --trim-bottom-right: 0%; --trim-left-bottom: 0%; --trim-left-top: 0%; --trim-right-bottom: 0%; --trim-right-top: 0%; --trim-top-left: 0%; --trim-top-right: 0%;  }
+    </style>
+    <div class="container">
+      <table class="tinytable" id="tinytable_vonskumz34tcbd6rzcfe" style="width: auto; margin-left: auto; margin-right: auto;" data-quarto-disable-processing="true">
+        
+        <thead>
+              <tr>
+                <th scope="col" data-row="0" data-col="1">Blur</th>
+                <th scope="col" data-row="0" data-col="2">Mu</th>
+                <th scope="col" data-row="0" data-col="3">95% CrI</th>
+                <th scope="col" data-row="0" data-col="4">pd</th>
+              </tr>
+        </thead>
+        
+        <tbody>
+                <tr>
+                  <td data-row="1" data-col="1">Clear</td>
+                  <td data-row="1" data-col="2">582.2</td>
+                  <td data-row="1" data-col="3">[563.3, 603.2]</td>
+                  <td data-row="1" data-col="4">1</td>
+                </tr>
+                <tr>
+                  <td data-row="2" data-col="1">Low-Blur</td>
+                  <td data-row="2" data-col="2">598.1</td>
+                  <td data-row="2" data-col="3">[582, 616]</td>
+                  <td data-row="2" data-col="4">1</td>
+                </tr>
+        </tbody>
+      </table>
+    </div>
+<!-- hack to avoid NA insertion in last line -->
+</div>
+</figure>
+</div>
+<p>Because the primary <code>mu</code> parameter in the default <code>brms</code> ex-Gaussian model represents <span class="math inline">\(E(RT)\)</span>, these estimates should be close to 600 ms in both conditions.</p>
+<p>The corresponding contrast can be obtained using <code>estimate_contrasts()</code>:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Default model: Blur contrast in E(RT) (≈ 0 by design).</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>overall_difference <span class="ot">&lt;-</span> <span class="fu">estimate_contrasts</span>(</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  fit_brms,</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">contrast =</span> <span class="st">"Blur"</span>,</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">centrality =</span> <span class="st">"mean"</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="tbl-default-contrast" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-default-contrast-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;3: Blur contrast in the expected response from the default brms model.
+</figcaption>
+<div aria-describedby="tbl-default-contrast-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<!-- preamble start -->
+
+    <script src="https://cdn.jsdelivr.net/gh/vincentarelbundock/tinytable@main/inst/tinytable.js"></script>
+
+    <script>
+      // Create table-specific functions using external factory
+      const tableFns_iyq9euuvy44h01wuq37w = TinyTable.createTableFunctions("tinytable_iyq9euuvy44h01wuq37w");
+      // tinytable span after
+      window.addEventListener('load', function () {
+          var cellsToStyle = [
+            // tinytable style arrays after
+          { positions: [ { i: '1', j: 1 }, { i: '1', j: 2 }, { i: '1', j: 3 }, { i: '1', j: 4 } ], css_id: 'tinytable_css_qubfzufhe5f8e1ukj86r',}, 
+          { positions: [ { i: '0', j: 1 }, { i: '0', j: 2 }, { i: '0', j: 3 }, { i: '0', j: 4 } ], css_id: 'tinytable_css_p0ezrfj97ofmo0sdzdfo',}, 
+          ];
+
+          // Loop over the arrays to style the cells
+          cellsToStyle.forEach(function (group) {
+              group.positions.forEach(function (cell) {
+                  tableFns_iyq9euuvy44h01wuq37w.styleCell(cell.i, cell.j, group.css_id);
+              });
+          });
+      });
+    </script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/vincentarelbundock/tinytable@main/inst/tinytable.css">
+    <style>
+    /* tinytable css entries after */
+    #tinytable_iyq9euuvy44h01wuq37w td.tinytable_css_qubfzufhe5f8e1ukj86r, #tinytable_iyq9euuvy44h01wuq37w th.tinytable_css_qubfzufhe5f8e1ukj86r {  position: relative; --border-bottom: 1; --border-left: 0; --border-right: 0; --border-top: 0; --line-color-bottom: var(--tt-line-color); --line-color-left: var(--tt-line-color); --line-color-right: var(--tt-line-color); --line-color-top: var(--tt-line-color); --line-width-bottom: 0.08em; --line-width-left: 0.1em; --line-width-right: 0.1em; --line-width-top: 0.1em; --trim-bottom-left: 0%; --trim-bottom-right: 0%; --trim-left-bottom: 0%; --trim-left-top: 0%; --trim-right-bottom: 0%; --trim-right-top: 0%; --trim-top-left: 0%; --trim-top-right: 0%;  }
+    #tinytable_iyq9euuvy44h01wuq37w td.tinytable_css_p0ezrfj97ofmo0sdzdfo, #tinytable_iyq9euuvy44h01wuq37w th.tinytable_css_p0ezrfj97ofmo0sdzdfo {  position: relative; --border-bottom: 1; --border-left: 0; --border-right: 0; --border-top: 1; --line-color-bottom: var(--tt-line-color); --line-color-left: var(--tt-line-color); --line-color-right: var(--tt-line-color); --line-color-top: var(--tt-line-color); --line-width-bottom: 0.05em; --line-width-left: 0.1em; --line-width-right: 0.1em; --line-width-top: 0.08em; --trim-bottom-left: 0%; --trim-bottom-right: 0%; --trim-left-bottom: 0%; --trim-left-top: 0%; --trim-right-bottom: 0%; --trim-right-top: 0%; --trim-top-left: 0%; --trim-top-right: 0%;  }
+    </style>
+    <div class="container">
+      <table class="tinytable" id="tinytable_iyq9euuvy44h01wuq37w" style="width: auto; margin-left: auto; margin-right: auto;" data-quarto-disable-processing="true">
+        
+        <thead>
+              <tr>
+                <th scope="col" data-row="0" data-col="1">Contrast</th>
+                <th scope="col" data-row="0" data-col="2">Mean</th>
+                <th scope="col" data-row="0" data-col="3">95% CrI</th>
+                <th scope="col" data-row="0" data-col="4">pd</th>
+              </tr>
+        </thead>
+        
+        <tbody>
+                <tr>
+                  <td data-row="1" data-col="1">Low-Blur - Clear</td>
+                  <td data-row="1" data-col="2">15.9</td>
+                  <td data-row="1" data-col="3">[-10.6, 41.3]</td>
+                  <td data-row="1" data-col="4">0.89</td>
+                </tr>
+        </tbody>
+      </table>
+    </div>
+<!-- hack to avoid NA insertion in last line -->
+</div>
+</figure>
+</div>
+<p>The posterior estimate of this contrast should be close to zero because the two conditions were generated with the same expected RT:</p>
+<p><span class="math display">\[(550 + 50) - (500 + 100) = 600 - 600 = 0.\]</span></p>
+<p>Thus, the default model correctly recovers the absence of a difference in the full distributional mean. However, its primary <code>mu</code> coefficient does not directly reveal the 50-ms difference in the Gaussian-location parameter.</p>
+</section>
+<section id="estimating-the-exponential-component" class="level3">
+<h3 class="anchored" data-anchor-id="estimating-the-exponential-component">Estimating the Exponential Component</h3>
+<p>In the default <code>brms</code> parameterization, <code>beta</code> represents the mean of the exponential component. It therefore corresponds directly to <span class="math inline">\(\tau\)</span> in the classical parameterization:</p>
+<p><span class="math display">\[\beta = \tau.\]</span></p>
+<p>Condition-specific estimates can be obtained by requesting predictions for <code>beta</code>:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Default model: per-condition beta (the exponential mean = classical tau).</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>tau_estimates_default <span class="ot">&lt;-</span> <span class="fu">estimate_means</span>(</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  fit_brms,</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">by =</span> <span class="st">"Blur"</span>,</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">predict =</span> <span class="st">"beta"</span>,</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">centrality =</span> <span class="st">"mean"</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="tbl-default-beta" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-default-beta-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;4: Estimated exponential component (<code>beta</code>) by condition from the default brms model.
+</figcaption>
+<div aria-describedby="tbl-default-beta-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<!-- preamble start -->
+
+    <script src="https://cdn.jsdelivr.net/gh/vincentarelbundock/tinytable@main/inst/tinytable.js"></script>
+
+    <script>
+      // Create table-specific functions using external factory
+      const tableFns_l0pg1j0z9ki9bypl66cn = TinyTable.createTableFunctions("tinytable_l0pg1j0z9ki9bypl66cn");
+      // tinytable span after
+      window.addEventListener('load', function () {
+          var cellsToStyle = [
+            // tinytable style arrays after
+          { positions: [ { i: '2', j: 1 }, { i: '2', j: 2 }, { i: '2', j: 3 }, { i: '2', j: 4 } ], css_id: 'tinytable_css_x27wkdk6i61miojzizsn',}, 
+          { positions: [ { i: '0', j: 1 }, { i: '0', j: 2 }, { i: '0', j: 3 }, { i: '0', j: 4 } ], css_id: 'tinytable_css_qwkg8g5pzh4wmjx7wyfu',}, 
+          ];
+
+          // Loop over the arrays to style the cells
+          cellsToStyle.forEach(function (group) {
+              group.positions.forEach(function (cell) {
+                  tableFns_l0pg1j0z9ki9bypl66cn.styleCell(cell.i, cell.j, group.css_id);
+              });
+          });
+      });
+    </script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/vincentarelbundock/tinytable@main/inst/tinytable.css">
+    <style>
+    /* tinytable css entries after */
+    #tinytable_l0pg1j0z9ki9bypl66cn td.tinytable_css_x27wkdk6i61miojzizsn, #tinytable_l0pg1j0z9ki9bypl66cn th.tinytable_css_x27wkdk6i61miojzizsn {  position: relative; --border-bottom: 1; --border-left: 0; --border-right: 0; --border-top: 0; --line-color-bottom: var(--tt-line-color); --line-color-left: var(--tt-line-color); --line-color-right: var(--tt-line-color); --line-color-top: var(--tt-line-color); --line-width-bottom: 0.08em; --line-width-left: 0.1em; --line-width-right: 0.1em; --line-width-top: 0.1em; --trim-bottom-left: 0%; --trim-bottom-right: 0%; --trim-left-bottom: 0%; --trim-left-top: 0%; --trim-right-bottom: 0%; --trim-right-top: 0%; --trim-top-left: 0%; --trim-top-right: 0%;  }
+    #tinytable_l0pg1j0z9ki9bypl66cn td.tinytable_css_qwkg8g5pzh4wmjx7wyfu, #tinytable_l0pg1j0z9ki9bypl66cn th.tinytable_css_qwkg8g5pzh4wmjx7wyfu {  position: relative; --border-bottom: 1; --border-left: 0; --border-right: 0; --border-top: 1; --line-color-bottom: var(--tt-line-color); --line-color-left: var(--tt-line-color); --line-color-right: var(--tt-line-color); --line-color-top: var(--tt-line-color); --line-width-bottom: 0.05em; --line-width-left: 0.1em; --line-width-right: 0.1em; --line-width-top: 0.08em; --trim-bottom-left: 0%; --trim-bottom-right: 0%; --trim-left-bottom: 0%; --trim-left-top: 0%; --trim-right-bottom: 0%; --trim-right-top: 0%; --trim-top-left: 0%; --trim-top-right: 0%;  }
+    </style>
+    <div class="container">
+      <table class="tinytable" id="tinytable_l0pg1j0z9ki9bypl66cn" style="width: auto; margin-left: auto; margin-right: auto;" data-quarto-disable-processing="true">
+        
+        <thead>
+              <tr>
+                <th scope="col" data-row="0" data-col="1">Blur</th>
+                <th scope="col" data-row="0" data-col="2">Beta</th>
+                <th scope="col" data-row="0" data-col="3">95% CrI</th>
+                <th scope="col" data-row="0" data-col="4">pd</th>
+              </tr>
+        </thead>
+        
+        <tbody>
+                <tr>
+                  <td data-row="1" data-col="1">Clear</td>
+                  <td data-row="1" data-col="2">90.0</td>
+                  <td data-row="1" data-col="3">[66.9, 117.4]</td>
+                  <td data-row="1" data-col="4">1</td>
+                </tr>
+                <tr>
+                  <td data-row="2" data-col="1">Low-Blur</td>
+                  <td data-row="2" data-col="2">71.6</td>
+                  <td data-row="2" data-col="3">[51.2, 95.9]</td>
+                  <td data-row="2" data-col="4">1</td>
+                </tr>
+        </tbody>
+      </table>
+    </div>
+<!-- hack to avoid NA insertion in last line -->
+</div>
+</figure>
+</div>
+<p>Although the resulting object is called <code>tau_estimates_default</code> for interpretive clarity, the parameter is named <code>beta</code> inside the default <code>brms</code> model.</p>
+<p>These estimates should be approximately 100 ms for Clear and 50 ms for Low-Blur.</p>
+<p>The corresponding contrast can be obtained using:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Default model: Blur contrast in beta (the exponential component).</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>tau_difference_default <span class="ot">&lt;-</span> <span class="fu">estimate_contrasts</span>(</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  fit_brms,</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">contrast =</span> <span class="st">"Blur"</span>,</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">predict =</span> <span class="st">"beta"</span>,</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">centrality =</span> <span class="st">"mean"</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="tbl-default-beta-contrast" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-default-beta-contrast-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;5: Blur contrast in the exponential component (<code>beta</code>) from the default brms model.
+</figcaption>
+<div aria-describedby="tbl-default-beta-contrast-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<!-- preamble start -->
+
+    <script src="https://cdn.jsdelivr.net/gh/vincentarelbundock/tinytable@main/inst/tinytable.js"></script>
+
+    <script>
+      // Create table-specific functions using external factory
+      const tableFns_7wc8m2qe1aklw4s47a3f = TinyTable.createTableFunctions("tinytable_7wc8m2qe1aklw4s47a3f");
+      // tinytable span after
+      window.addEventListener('load', function () {
+          var cellsToStyle = [
+            // tinytable style arrays after
+          { positions: [ { i: '1', j: 1 }, { i: '1', j: 2 }, { i: '1', j: 3 }, { i: '1', j: 4 } ], css_id: 'tinytable_css_xhai4t76d6u1d3uvghex',}, 
+          { positions: [ { i: '0', j: 1 }, { i: '0', j: 2 }, { i: '0', j: 3 }, { i: '0', j: 4 } ], css_id: 'tinytable_css_admi4e3irv0ij2gc8lv9',}, 
+          ];
+
+          // Loop over the arrays to style the cells
+          cellsToStyle.forEach(function (group) {
+              group.positions.forEach(function (cell) {
+                  tableFns_7wc8m2qe1aklw4s47a3f.styleCell(cell.i, cell.j, group.css_id);
+              });
+          });
+      });
+    </script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/vincentarelbundock/tinytable@main/inst/tinytable.css">
+    <style>
+    /* tinytable css entries after */
+    #tinytable_7wc8m2qe1aklw4s47a3f td.tinytable_css_xhai4t76d6u1d3uvghex, #tinytable_7wc8m2qe1aklw4s47a3f th.tinytable_css_xhai4t76d6u1d3uvghex {  position: relative; --border-bottom: 1; --border-left: 0; --border-right: 0; --border-top: 0; --line-color-bottom: var(--tt-line-color); --line-color-left: var(--tt-line-color); --line-color-right: var(--tt-line-color); --line-color-top: var(--tt-line-color); --line-width-bottom: 0.08em; --line-width-left: 0.1em; --line-width-right: 0.1em; --line-width-top: 0.1em; --trim-bottom-left: 0%; --trim-bottom-right: 0%; --trim-left-bottom: 0%; --trim-left-top: 0%; --trim-right-bottom: 0%; --trim-right-top: 0%; --trim-top-left: 0%; --trim-top-right: 0%;  }
+    #tinytable_7wc8m2qe1aklw4s47a3f td.tinytable_css_admi4e3irv0ij2gc8lv9, #tinytable_7wc8m2qe1aklw4s47a3f th.tinytable_css_admi4e3irv0ij2gc8lv9 {  position: relative; --border-bottom: 1; --border-left: 0; --border-right: 0; --border-top: 1; --line-color-bottom: var(--tt-line-color); --line-color-left: var(--tt-line-color); --line-color-right: var(--tt-line-color); --line-color-top: var(--tt-line-color); --line-width-bottom: 0.05em; --line-width-left: 0.1em; --line-width-right: 0.1em; --line-width-top: 0.08em; --trim-bottom-left: 0%; --trim-bottom-right: 0%; --trim-left-bottom: 0%; --trim-left-top: 0%; --trim-right-bottom: 0%; --trim-right-top: 0%; --trim-top-left: 0%; --trim-top-right: 0%;  }
+    </style>
+    <div class="container">
+      <table class="tinytable" id="tinytable_7wc8m2qe1aklw4s47a3f" style="width: auto; margin-left: auto; margin-right: auto;" data-quarto-disable-processing="true">
+        
+        <thead>
+              <tr>
+                <th scope="col" data-row="0" data-col="1">Contrast</th>
+                <th scope="col" data-row="0" data-col="2">Mean</th>
+                <th scope="col" data-row="0" data-col="3">95% CrI</th>
+                <th scope="col" data-row="0" data-col="4">pd</th>
+              </tr>
+        </thead>
+        
+        <tbody>
+                <tr>
+                  <td data-row="1" data-col="1">Low-Blur - Clear</td>
+                  <td data-row="1" data-col="2">-18.3</td>
+                  <td data-row="1" data-col="3">[-49.3, 11.5]</td>
+                  <td data-row="1" data-col="4">0.882</td>
+                </tr>
+        </tbody>
+      </table>
+    </div>
+<!-- hack to avoid NA insertion in last line -->
+</div>
+</figure>
+</div>
+<p>The expected contrast is</p>
+<p><span class="math display">\[50 - 100 = -50 \text{ ms}.\]</span></p>
+<p>Although the default model estimates the exponential component directly, it does not directly return the classical Gaussian-location parameter. That quantity must instead be derived as</p>
+<p><span class="math display">\[\mu_{\text{Gaussian}} = E(RT) - \beta.\]</span></p>
+<p>Because <span class="math inline">\(\beta=\tau\)</span>, this can also be written as</p>
+<p><span class="math display">\[\mu_{\text{Gaussian}} = E(RT) - \tau.\]</span></p>
+</section>
+</section>
+<section id="classical-ex-gaussian-parameterization" class="level2">
+<h2 class="anchored" data-anchor-id="classical-ex-gaussian-parameterization">Classical Ex-Gaussian Parameterization</h2>
+<p>We can instead fit the model using the <code>{brms.exgaussian}</code> package, which implements the classical ex-Gaussian parameterization. In this model, <code>mu</code> represents the location of the Gaussian component and <code>tau</code> represents the mean of the exponential component.</p>
+<p>Thus, the difference between the two models is not that <code>beta</code> and <code>tau</code> represent different components. Rather, the packages use different labels for the same exponential parameter:</p>
+<p><span class="math display">\[\beta_{\texttt{brms}} = \tau_{\texttt{brms.exgaussian}}.\]</span></p>
+<p>The main difference is the interpretation of <code>mu</code>:</p>
+<p><span class="math display">\[\mu_{\texttt{brms}} = E(RT),\]</span></p>
+<p>whereas</p>
+<p><span class="math display">\[\mu_{\texttt{brms.exgaussian}} = \mu_{\text{Gaussian}}.\]</span></p>
+<p>We first define the custom family and Stan functions:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Custom family that reparameterizes brms so mu is the Gaussian location.</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>exg_stanvars <span class="ot">&lt;-</span> <span class="fu">exgaussian2_stancode</span>()  <span class="co"># Stan code injected into the model</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>exg_family <span class="ot">&lt;-</span> <span class="fu">exgaussian2</span>()             <span class="co"># the custom family definition</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<section id="prior-specification-1" class="level3">
+<h3 class="anchored" data-anchor-id="prior-specification-1">Prior Specification</h3>
+<p>The priors for the classical model are specified as follows:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>priors_classical <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="co"># mu intercept: centered at 500 ms, now the Gaussian location of the</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  <span class="co"># reference condition (not E(RT)).</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">prior</span>(</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">normal</span>(<span class="dv">500</span>, <span class="dv">100</span>),</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">class =</span> <span class="st">"Intercept"</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Effect of Blur on mu (Gaussian location): centered at 0.</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">prior</span>(</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">normal</span>(<span class="dv">0</span>, <span class="dv">50</span>),</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">class =</span> <span class="st">"b"</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>  <span class="co"># tau (exponential mean) intercept, log scale: exp(log(100)) = 100 ms.</span></span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">prior</span>(</span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">normal</span>(<span class="fu">log</span>(<span class="dv">100</span>), <span class="fl">0.5</span>),</span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">class =</span> <span class="st">"Intercept"</span>,</span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">dpar =</span> <span class="st">"tau"</span></span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Effect of Blur on tau (log scale): centered at 0.</span></span>
+<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">prior</span>(</span>
+<span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a>    <span class="fu">normal</span>(<span class="dv">0</span>, <span class="fl">0.5</span>),</span>
+<span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">class =</span> <span class="st">"b"</span>,</span>
+<span id="cb9-23"><a href="#cb9-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">dpar =</span> <span class="st">"tau"</span></span>
+<span id="cb9-24"><a href="#cb9-24" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb9-25"><a href="#cb9-25" aria-hidden="true" tabindex="-1"></a>  <span class="co"># sigma (Gaussian SD) intercept, log scale: exp(log(60)) = 60 ms.</span></span>
+<span id="cb9-26"><a href="#cb9-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">prior</span>(</span>
+<span id="cb9-27"><a href="#cb9-27" aria-hidden="true" tabindex="-1"></a>    <span class="fu">normal</span>(<span class="fu">log</span>(<span class="dv">60</span>), <span class="fl">0.5</span>),</span>
+<span id="cb9-28"><a href="#cb9-28" aria-hidden="true" tabindex="-1"></a>    <span class="at">class =</span> <span class="st">"Intercept"</span>,</span>
+<span id="cb9-29"><a href="#cb9-29" aria-hidden="true" tabindex="-1"></a>    <span class="at">dpar =</span> <span class="st">"sigma"</span></span>
+<span id="cb9-30"><a href="#cb9-30" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb9-31"><a href="#cb9-31" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>These priors follow the same reasoning as those for the default model (described above), with two changes. First, the intercept is now centered at 500 ms rather than 600 ms, because in the classical parameterization <code>mu</code> denotes the Gaussian-location parameter (500 ms for the Clear reference condition) rather than the expected RT:</p>
+<p><span class="math display">\[\mu_{\text{Intercept}} \sim \mathcal{N}(500,100).\]</span></p>
+<p>Second, because this model estimates <code>sigma</code> explicitly, it receives its own weakly informative prior on the log scale, centered at the simulated Gaussian standard deviation of 60 ms:</p>
+<p><span class="math display">\[\log(\sigma) \sim \mathcal{N}\left(\log(60),0.5\right).\]</span></p>
+<p>The coefficient for <code>Blur</code> on <code>mu</code> and the exponential-component priors are unchanged from the default model; the latter now simply attach to <code>tau</code> rather than <code>beta</code>, reflecting the difference in labels rather than any difference in the underlying quantity.</p>
+<p>The model is then fit using:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>fit_brms_new <span class="ot">&lt;-</span> <span class="fu">brm</span>(</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bf</span>(</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    rt <span class="sc">~</span> Blur,      <span class="co"># mu submodel: here mu IS the Gaussian location</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    tau <span class="sc">~</span> Blur,     <span class="co"># exponential mean (the tail), allowed to vary</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>    sigma <span class="sc">~</span> <span class="dv">1</span>       <span class="co"># constant Gaussian SD</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> d,</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">prior =</span> priors_classical,</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">family =</span> exg_family,        <span class="co"># custom classical ex-Gaussian family</span></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">stanvars =</span> exg_stanvars,    <span class="co"># supplies its Stan implementation</span></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">chains =</span> <span class="dv">2</span>,</span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">iter =</span> <span class="dv">2000</span>,</span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>  <span class="at">warmup =</span> <span class="dv">500</span>,</span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>  <span class="at">backend =</span> <span class="st">"cmdstanr"</span>,</span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>  <span class="at">cores =</span> <span class="dv">4</span>,</span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>  <span class="at">seed =</span> <span class="dv">1234</span></span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="estimating-the-gaussian-location-parameter" class="level3">
+<h3 class="anchored" data-anchor-id="estimating-the-gaussian-location-parameter">Estimating the Gaussian-Location Parameter</h3>
+<p>For the classical model, estimates from the primary regression formula correspond to the Gaussian-location parameter <span class="math inline">\(\mu\)</span>:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Classical model: per-condition mu, now the Gaussian-location parameter.</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>mu_estimates <span class="ot">&lt;-</span> <span class="fu">estimate_means</span>(</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  fit_brms_new,</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">by =</span> <span class="st">"Blur"</span>,</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">predict =</span> <span class="st">"mu"</span>,</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">centrality =</span> <span class="st">"mean"</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="tbl-classical-mu" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-classical-mu-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;6: Estimated Gaussian-location parameter (<span class="math inline">\(\mu\)</span>) by condition from the classical model.
+</figcaption>
+<div aria-describedby="tbl-classical-mu-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<!-- preamble start -->
+
+    <script src="https://cdn.jsdelivr.net/gh/vincentarelbundock/tinytable@main/inst/tinytable.js"></script>
+
+    <script>
+      // Create table-specific functions using external factory
+      const tableFns_1y93z9yw4mhorunf2okd = TinyTable.createTableFunctions("tinytable_1y93z9yw4mhorunf2okd");
+      // tinytable span after
+      window.addEventListener('load', function () {
+          var cellsToStyle = [
+            // tinytable style arrays after
+          { positions: [ { i: '2', j: 1 }, { i: '2', j: 2 }, { i: '2', j: 3 }, { i: '2', j: 4 } ], css_id: 'tinytable_css_t3w675cou6z8fqrctqbl',}, 
+          { positions: [ { i: '0', j: 1 }, { i: '0', j: 2 }, { i: '0', j: 3 }, { i: '0', j: 4 } ], css_id: 'tinytable_css_icoiq7989w9sctliry6i',}, 
+          ];
+
+          // Loop over the arrays to style the cells
+          cellsToStyle.forEach(function (group) {
+              group.positions.forEach(function (cell) {
+                  tableFns_1y93z9yw4mhorunf2okd.styleCell(cell.i, cell.j, group.css_id);
+              });
+          });
+      });
+    </script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/vincentarelbundock/tinytable@main/inst/tinytable.css">
+    <style>
+    /* tinytable css entries after */
+    #tinytable_1y93z9yw4mhorunf2okd td.tinytable_css_t3w675cou6z8fqrctqbl, #tinytable_1y93z9yw4mhorunf2okd th.tinytable_css_t3w675cou6z8fqrctqbl {  position: relative; --border-bottom: 1; --border-left: 0; --border-right: 0; --border-top: 0; --line-color-bottom: var(--tt-line-color); --line-color-left: var(--tt-line-color); --line-color-right: var(--tt-line-color); --line-color-top: var(--tt-line-color); --line-width-bottom: 0.08em; --line-width-left: 0.1em; --line-width-right: 0.1em; --line-width-top: 0.1em; --trim-bottom-left: 0%; --trim-bottom-right: 0%; --trim-left-bottom: 0%; --trim-left-top: 0%; --trim-right-bottom: 0%; --trim-right-top: 0%; --trim-top-left: 0%; --trim-top-right: 0%;  }
+    #tinytable_1y93z9yw4mhorunf2okd td.tinytable_css_icoiq7989w9sctliry6i, #tinytable_1y93z9yw4mhorunf2okd th.tinytable_css_icoiq7989w9sctliry6i {  position: relative; --border-bottom: 1; --border-left: 0; --border-right: 0; --border-top: 1; --line-color-bottom: var(--tt-line-color); --line-color-left: var(--tt-line-color); --line-color-right: var(--tt-line-color); --line-color-top: var(--tt-line-color); --line-width-bottom: 0.05em; --line-width-left: 0.1em; --line-width-right: 0.1em; --line-width-top: 0.08em; --trim-bottom-left: 0%; --trim-bottom-right: 0%; --trim-left-bottom: 0%; --trim-left-top: 0%; --trim-right-bottom: 0%; --trim-right-top: 0%; --trim-top-left: 0%; --trim-top-right: 0%;  }
+    </style>
+    <div class="container">
+      <table class="tinytable" id="tinytable_1y93z9yw4mhorunf2okd" style="width: auto; margin-left: auto; margin-right: auto;" data-quarto-disable-processing="true">
+        
+        <thead>
+              <tr>
+                <th scope="col" data-row="0" data-col="1">Blur</th>
+                <th scope="col" data-row="0" data-col="2">Mu</th>
+                <th scope="col" data-row="0" data-col="3">95% CrI</th>
+                <th scope="col" data-row="0" data-col="4">pd</th>
+              </tr>
+        </thead>
+        
+        <tbody>
+                <tr>
+                  <td data-row="1" data-col="1">Clear</td>
+                  <td data-row="1" data-col="2">493.4</td>
+                  <td data-row="1" data-col="3">[472.1, 513.7]</td>
+                  <td data-row="1" data-col="4">1</td>
+                </tr>
+                <tr>
+                  <td data-row="2" data-col="1">Low-Blur</td>
+                  <td data-row="2" data-col="2">526.0</td>
+                  <td data-row="2" data-col="3">[505.7, 546.2]</td>
+                  <td data-row="2" data-col="4">1</td>
+                </tr>
+        </tbody>
+      </table>
+    </div>
+<!-- hack to avoid NA insertion in last line -->
+</div>
+</figure>
+</div>
+<p>The estimates should be approximately 500 ms for Clear and 550 ms for Low-Blur.</p>
+<p>The contrast can be obtained using:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Classical model: Blur contrast in the Gaussian-location parameter mu.</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>mu_difference <span class="ot">&lt;-</span> <span class="fu">estimate_contrasts</span>(</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  fit_brms_new,</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">contrast =</span> <span class="st">"Blur"</span>,</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">predict =</span> <span class="st">"mu"</span>,</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">centrality =</span> <span class="st">"mean"</span></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="tbl-classical-mu-contrast" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-classical-mu-contrast-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;7: Blur contrast in the Gaussian-location parameter (<span class="math inline">\(\mu\)</span>) from the classical model.
+</figcaption>
+<div aria-describedby="tbl-classical-mu-contrast-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<!-- preamble start -->
+
+    <script src="https://cdn.jsdelivr.net/gh/vincentarelbundock/tinytable@main/inst/tinytable.js"></script>
+
+    <script>
+      // Create table-specific functions using external factory
+      const tableFns_du7ymeb1fb0iyh8j5y1b = TinyTable.createTableFunctions("tinytable_du7ymeb1fb0iyh8j5y1b");
+      // tinytable span after
+      window.addEventListener('load', function () {
+          var cellsToStyle = [
+            // tinytable style arrays after
+          { positions: [ { i: '1', j: 1 }, { i: '1', j: 2 }, { i: '1', j: 3 }, { i: '1', j: 4 } ], css_id: 'tinytable_css_ivyobqb1jvcrt2jb241k',}, 
+          { positions: [ { i: '0', j: 1 }, { i: '0', j: 2 }, { i: '0', j: 3 }, { i: '0', j: 4 } ], css_id: 'tinytable_css_lvbk393skrcdoi1ou8zi',}, 
+          ];
+
+          // Loop over the arrays to style the cells
+          cellsToStyle.forEach(function (group) {
+              group.positions.forEach(function (cell) {
+                  tableFns_du7ymeb1fb0iyh8j5y1b.styleCell(cell.i, cell.j, group.css_id);
+              });
+          });
+      });
+    </script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/vincentarelbundock/tinytable@main/inst/tinytable.css">
+    <style>
+    /* tinytable css entries after */
+    #tinytable_du7ymeb1fb0iyh8j5y1b td.tinytable_css_ivyobqb1jvcrt2jb241k, #tinytable_du7ymeb1fb0iyh8j5y1b th.tinytable_css_ivyobqb1jvcrt2jb241k {  position: relative; --border-bottom: 1; --border-left: 0; --border-right: 0; --border-top: 0; --line-color-bottom: var(--tt-line-color); --line-color-left: var(--tt-line-color); --line-color-right: var(--tt-line-color); --line-color-top: var(--tt-line-color); --line-width-bottom: 0.08em; --line-width-left: 0.1em; --line-width-right: 0.1em; --line-width-top: 0.1em; --trim-bottom-left: 0%; --trim-bottom-right: 0%; --trim-left-bottom: 0%; --trim-left-top: 0%; --trim-right-bottom: 0%; --trim-right-top: 0%; --trim-top-left: 0%; --trim-top-right: 0%;  }
+    #tinytable_du7ymeb1fb0iyh8j5y1b td.tinytable_css_lvbk393skrcdoi1ou8zi, #tinytable_du7ymeb1fb0iyh8j5y1b th.tinytable_css_lvbk393skrcdoi1ou8zi {  position: relative; --border-bottom: 1; --border-left: 0; --border-right: 0; --border-top: 1; --line-color-bottom: var(--tt-line-color); --line-color-left: var(--tt-line-color); --line-color-right: var(--tt-line-color); --line-color-top: var(--tt-line-color); --line-width-bottom: 0.05em; --line-width-left: 0.1em; --line-width-right: 0.1em; --line-width-top: 0.08em; --trim-bottom-left: 0%; --trim-bottom-right: 0%; --trim-left-bottom: 0%; --trim-left-top: 0%; --trim-right-bottom: 0%; --trim-right-top: 0%; --trim-top-left: 0%; --trim-top-right: 0%;  }
+    </style>
+    <div class="container">
+      <table class="tinytable" id="tinytable_du7ymeb1fb0iyh8j5y1b" style="width: auto; margin-left: auto; margin-right: auto;" data-quarto-disable-processing="true">
+        
+        <thead>
+              <tr>
+                <th scope="col" data-row="0" data-col="1">Contrast</th>
+                <th scope="col" data-row="0" data-col="2">Mean</th>
+                <th scope="col" data-row="0" data-col="3">95% CrI</th>
+                <th scope="col" data-row="0" data-col="4">pd</th>
+              </tr>
+        </thead>
+        
+        <tbody>
+                <tr>
+                  <td data-row="1" data-col="1">Low-Blur - Clear</td>
+                  <td data-row="1" data-col="2">32.7</td>
+                  <td data-row="1" data-col="3">[6.7, 58.4]</td>
+                  <td data-row="1" data-col="4">0.992</td>
+                </tr>
+        </tbody>
+      </table>
+    </div>
+<!-- hack to avoid NA insertion in last line -->
+</div>
+</figure>
+</div>
+<p>The expected contrast is</p>
+<p><span class="math display">\[550 - 500 = 50 \text{ ms}.\]</span></p>
+<p>The posterior mean will not necessarily equal exactly 50 ms because of sampling variability. However, the 95% credible interval should contain the population value of 50 ms when the model successfully recovers the simulated effect.</p>
+</section>
+<section id="estimating-the-exponential-component-1" class="level3">
+<h3 class="anchored" data-anchor-id="estimating-the-exponential-component-1">Estimating the Exponential Component</h3>
+<p>Condition-specific estimates of <span class="math inline">\(\tau\)</span> can be obtained by requesting predictions for the <code>tau</code> distributional parameter:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Classical model: per-condition tau (the exponential component).</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>tau_estimates <span class="ot">&lt;-</span> <span class="fu">estimate_means</span>(</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  fit_brms_new,</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">by =</span> <span class="st">"Blur"</span>,</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">predict =</span> <span class="st">"tau"</span>,</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">centrality =</span> <span class="st">"mean"</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="tbl-classical-tau" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-classical-tau-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;8: Estimated exponential component (<span class="math inline">\(\tau\)</span>) by condition from the classical model.
+</figcaption>
+<div aria-describedby="tbl-classical-tau-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<!-- preamble start -->
+
+    <script src="https://cdn.jsdelivr.net/gh/vincentarelbundock/tinytable@main/inst/tinytable.js"></script>
+
+    <script>
+      // Create table-specific functions using external factory
+      const tableFns_urtj164o2z4gq6zpxc0z = TinyTable.createTableFunctions("tinytable_urtj164o2z4gq6zpxc0z");
+      // tinytable span after
+      window.addEventListener('load', function () {
+          var cellsToStyle = [
+            // tinytable style arrays after
+          { positions: [ { i: '2', j: 1 }, { i: '2', j: 2 }, { i: '2', j: 3 }, { i: '2', j: 4 } ], css_id: 'tinytable_css_pvt98ze26p90j91oell3',}, 
+          { positions: [ { i: '0', j: 1 }, { i: '0', j: 2 }, { i: '0', j: 3 }, { i: '0', j: 4 } ], css_id: 'tinytable_css_diffy3btbm3k19eu45x1',}, 
+          ];
+
+          // Loop over the arrays to style the cells
+          cellsToStyle.forEach(function (group) {
+              group.positions.forEach(function (cell) {
+                  tableFns_urtj164o2z4gq6zpxc0z.styleCell(cell.i, cell.j, group.css_id);
+              });
+          });
+      });
+    </script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/vincentarelbundock/tinytable@main/inst/tinytable.css">
+    <style>
+    /* tinytable css entries after */
+    #tinytable_urtj164o2z4gq6zpxc0z td.tinytable_css_pvt98ze26p90j91oell3, #tinytable_urtj164o2z4gq6zpxc0z th.tinytable_css_pvt98ze26p90j91oell3 {  position: relative; --border-bottom: 1; --border-left: 0; --border-right: 0; --border-top: 0; --line-color-bottom: var(--tt-line-color); --line-color-left: var(--tt-line-color); --line-color-right: var(--tt-line-color); --line-color-top: var(--tt-line-color); --line-width-bottom: 0.08em; --line-width-left: 0.1em; --line-width-right: 0.1em; --line-width-top: 0.1em; --trim-bottom-left: 0%; --trim-bottom-right: 0%; --trim-left-bottom: 0%; --trim-left-top: 0%; --trim-right-bottom: 0%; --trim-right-top: 0%; --trim-top-left: 0%; --trim-top-right: 0%;  }
+    #tinytable_urtj164o2z4gq6zpxc0z td.tinytable_css_diffy3btbm3k19eu45x1, #tinytable_urtj164o2z4gq6zpxc0z th.tinytable_css_diffy3btbm3k19eu45x1 {  position: relative; --border-bottom: 1; --border-left: 0; --border-right: 0; --border-top: 1; --line-color-bottom: var(--tt-line-color); --line-color-left: var(--tt-line-color); --line-color-right: var(--tt-line-color); --line-color-top: var(--tt-line-color); --line-width-bottom: 0.05em; --line-width-left: 0.1em; --line-width-right: 0.1em; --line-width-top: 0.08em; --trim-bottom-left: 0%; --trim-bottom-right: 0%; --trim-left-bottom: 0%; --trim-left-top: 0%; --trim-right-bottom: 0%; --trim-right-top: 0%; --trim-top-left: 0%; --trim-top-right: 0%;  }
+    </style>
+    <div class="container">
+      <table class="tinytable" id="tinytable_urtj164o2z4gq6zpxc0z" style="width: auto; margin-left: auto; margin-right: auto;" data-quarto-disable-processing="true">
+        
+        <thead>
+              <tr>
+                <th scope="col" data-row="0" data-col="1">Blur</th>
+                <th scope="col" data-row="0" data-col="2">Mean</th>
+                <th scope="col" data-row="0" data-col="3">95% CrI</th>
+                <th scope="col" data-row="0" data-col="4">pd</th>
+              </tr>
+        </thead>
+        
+        <tbody>
+                <tr>
+                  <td data-row="1" data-col="1">Clear</td>
+                  <td data-row="1" data-col="2">88.5</td>
+                  <td data-row="1" data-col="3">[65.6, 115.1]</td>
+                  <td data-row="1" data-col="4">1</td>
+                </tr>
+                <tr>
+                  <td data-row="2" data-col="1">Low-Blur</td>
+                  <td data-row="2" data-col="2">72.0</td>
+                  <td data-row="2" data-col="3">[51, 95.6]</td>
+                  <td data-row="2" data-col="4">1</td>
+                </tr>
+        </tbody>
+      </table>
+    </div>
+<!-- hack to avoid NA insertion in last line -->
+</div>
+</figure>
+</div>
+<p>The estimates should be close to 100 ms for Clear and 50 ms for Low-Blur.</p>
+<p>The corresponding contrast can be obtained using:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Classical model: Blur contrast in tau (the exponential component).</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>tau_difference <span class="ot">&lt;-</span> <span class="fu">estimate_contrasts</span>(</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>  fit_brms_new,</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">contrast =</span> <span class="st">"Blur"</span>,</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">predict =</span> <span class="st">"tau"</span>,</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">centrality =</span> <span class="st">"mean"</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="tbl-classical-tau-contrast" class="cell quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-classical-tau-contrast-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;9: Blur contrast in the exponential component (<span class="math inline">\(\tau\)</span>) from the classical model.
+</figcaption>
+<div aria-describedby="tbl-classical-tau-contrast-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<!-- preamble start -->
+
+    <script src="https://cdn.jsdelivr.net/gh/vincentarelbundock/tinytable@main/inst/tinytable.js"></script>
+
+    <script>
+      // Create table-specific functions using external factory
+      const tableFns_h741cttfld29xxoynq8o = TinyTable.createTableFunctions("tinytable_h741cttfld29xxoynq8o");
+      // tinytable span after
+      window.addEventListener('load', function () {
+          var cellsToStyle = [
+            // tinytable style arrays after
+          { positions: [ { i: '1', j: 1 }, { i: '1', j: 2 }, { i: '1', j: 3 }, { i: '1', j: 4 } ], css_id: 'tinytable_css_zhm6p7lv219r7e0rakn5',}, 
+          { positions: [ { i: '0', j: 1 }, { i: '0', j: 2 }, { i: '0', j: 3 }, { i: '0', j: 4 } ], css_id: 'tinytable_css_3rq1nmgkmd39tyo6ewds',}, 
+          ];
+
+          // Loop over the arrays to style the cells
+          cellsToStyle.forEach(function (group) {
+              group.positions.forEach(function (cell) {
+                  tableFns_h741cttfld29xxoynq8o.styleCell(cell.i, cell.j, group.css_id);
+              });
+          });
+      });
+    </script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/vincentarelbundock/tinytable@main/inst/tinytable.css">
+    <style>
+    /* tinytable css entries after */
+    #tinytable_h741cttfld29xxoynq8o td.tinytable_css_zhm6p7lv219r7e0rakn5, #tinytable_h741cttfld29xxoynq8o th.tinytable_css_zhm6p7lv219r7e0rakn5 {  position: relative; --border-bottom: 1; --border-left: 0; --border-right: 0; --border-top: 0; --line-color-bottom: var(--tt-line-color); --line-color-left: var(--tt-line-color); --line-color-right: var(--tt-line-color); --line-color-top: var(--tt-line-color); --line-width-bottom: 0.08em; --line-width-left: 0.1em; --line-width-right: 0.1em; --line-width-top: 0.1em; --trim-bottom-left: 0%; --trim-bottom-right: 0%; --trim-left-bottom: 0%; --trim-left-top: 0%; --trim-right-bottom: 0%; --trim-right-top: 0%; --trim-top-left: 0%; --trim-top-right: 0%;  }
+    #tinytable_h741cttfld29xxoynq8o td.tinytable_css_3rq1nmgkmd39tyo6ewds, #tinytable_h741cttfld29xxoynq8o th.tinytable_css_3rq1nmgkmd39tyo6ewds {  position: relative; --border-bottom: 1; --border-left: 0; --border-right: 0; --border-top: 1; --line-color-bottom: var(--tt-line-color); --line-color-left: var(--tt-line-color); --line-color-right: var(--tt-line-color); --line-color-top: var(--tt-line-color); --line-width-bottom: 0.05em; --line-width-left: 0.1em; --line-width-right: 0.1em; --line-width-top: 0.08em; --trim-bottom-left: 0%; --trim-bottom-right: 0%; --trim-left-bottom: 0%; --trim-left-top: 0%; --trim-right-bottom: 0%; --trim-right-top: 0%; --trim-top-left: 0%; --trim-top-right: 0%;  }
+    </style>
+    <div class="container">
+      <table class="tinytable" id="tinytable_h741cttfld29xxoynq8o" style="width: auto; margin-left: auto; margin-right: auto;" data-quarto-disable-processing="true">
+        
+        <thead>
+              <tr>
+                <th scope="col" data-row="0" data-col="1">Contrast</th>
+                <th scope="col" data-row="0" data-col="2">Mean</th>
+                <th scope="col" data-row="0" data-col="3">95% CrI</th>
+                <th scope="col" data-row="0" data-col="4">pd</th>
+              </tr>
+        </thead>
+        
+        <tbody>
+                <tr>
+                  <td data-row="1" data-col="1">Low-Blur - Clear</td>
+                  <td data-row="1" data-col="2">-16.5</td>
+                  <td data-row="1" data-col="3">[-47, 13.4]</td>
+                  <td data-row="1" data-col="4">0.863</td>
+                </tr>
+        </tbody>
+      </table>
+    </div>
+<!-- hack to avoid NA insertion in last line -->
+</div>
+</figure>
+</div>
+<p>The expected contrast is</p>
+<p><span class="math display">\[50 - 100 = -50 \text{ ms}.\]</span></p>
+</section>
+</section>
+<section id="calculating-the-expected-response" class="level2">
+<h2 class="anchored" data-anchor-id="calculating-the-expected-response">Calculating the Expected Response</h2>
+<p>Under the classical parameterization, the expected response is not represented by either parameter alone. It must be calculated as</p>
+<p><span class="math display">\[E(RT) = \mu + \tau.\]</span></p>
+<p>For the Clear condition,</p>
+<p><span class="math display">\[E(RT_{\text{Clear}}) = 500 + 100 = 600 \text{ ms}.\]</span></p>
+<p>For the Low-Blur condition,</p>
+<p><span class="math display">\[E(RT_{\text{Low-Blur}}) = 550 + 50 = 600 \text{ ms}.\]</span></p>
+<p>The difference in expected RT is therefore</p>
+<p><span class="math display">\[E(RT_{\text{Low-Blur}}) - E(RT_{\text{Clear}}) = 600 - 600 = 0 \text{ ms}.\]</span></p>
+<p>Although the classical model should recover a positive blur effect on <span class="math inline">\(\mu\)</span> and a negative blur effect on <span class="math inline">\(\tau\)</span>, these effects cancel when the expected response is calculated. The full distributional mean therefore remains approximately equal across conditions.</p>
+<p>This example illustrates the central difference between the two parameterizations. The default <code>brms</code> ex-Gaussian model directly estimates the expected response and labels that parameter <code>mu</code>. The exponential component is labeled <code>beta</code>, although it corresponds to the classical <span class="math inline">\(\tau\)</span> parameter. In contrast, the <code>{brms.exgaussian}</code> model uses <code>mu</code> for the Gaussian-location parameter and <code>tau</code> for the exponential mean, consistent with the classical parameterization commonly used in reaction-time research.</p>
+</section>
+<section id="conclusion" class="level2">
+<h2 class="anchored" data-anchor-id="conclusion">Conclusion</h2>
+<p>With this commentary, I hope to encourage researchers to use the appropriate ex-Gaussian parameterization when modeling reaction-time data with the {brms} package. The ex-Gaussian distribution provides a powerful framework for moving beyond analyses of the mean by separating differences in the central portion of the reaction-time distribution from differences in its right tail.</p>
+<p>However, this flexibility also requires careful attention to model parameterization. In particular, researchers should not assume that parameters with familiar labels necessarily have the same interpretation across software implementations. Researchers should therefore examine the statistical definition and underlying implementation of a model before fitting it and interpreting its parameters. This is especially important when using flexible modeling software that may adopt parameterizations that differ from those commonly used in a particular research literature. I hope this commentary serves both as a practical guide to fitting the classical ex-Gaussian model in {brms} and as a broader reminder that convenient software defaults should not replace careful consideration of what a model actually estimates.</p>
+</section>
+<section id="references" class="level1 unnumbered">
+
+
+</section>
+
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography" id="quarto-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" data-line-spacing="2" role="list">
+<div id="ref-balota2011" class="csl-entry" role="listitem">
+Balota, D. A., &amp; Yap, M. J. (2011). Moving beyond the mean in studies of mental chronometry the power of response time distributional analyses. <em>Current Directions in Psychological Science</em>, <em>20</em>(3), 160166. <a href="http://cdp.sagepub.com/content/20/3/160.short">http://cdp.sagepub.com/content/20/3/160.short</a>
+</div>
+<div id="ref-julia" class="csl-entry" role="listitem">
+Bezanson, J., Edelman, A., Karpinski, S., &amp; Shah, V. B. (2017). Julia: A fresh approach to numerical computing. <em>SIAM Review</em>, <em>59</em>(1), 65–98. <a href="https://doi.org/10.1137/141000671">https://doi.org/10.1137/141000671</a>
+</div>
+<div id="ref-stan" class="csl-entry" role="listitem">
+Carpenter, B., Gelman, A., Hoffman, M. D., Lee, D., Goodrich, B., Betancourt, M., Brubaker, M. A., Guo, J., Li, P., &amp; Riddell, A. (2017). Stan: A probabilistic programming language. <em>Journal of Statistical Software</em>, <em>76</em>(1), 1–32. <a href="https://doi.org/10.18637/jss.v076.i01">https://doi.org/10.18637/jss.v076.i01</a>
+</div>
+<div id="ref-geller2025" class="csl-entry" role="listitem">
+Geller, J., Gomez, P., Buchanan, E. M., &amp; Makowski, D. (2025). A distributional response time analysis of the perceptual disfluency effect. <em>Journal of Cognition</em>, <em>8</em>(1), 50. <a href="https://doi.org/10.5334/joc.469">https://doi.org/10.5334/joc.469</a>
+</div>
+<div id="ref-matzke2009" class="csl-entry" role="listitem">
+Matzke, D., &amp; Wagenmakers, E.-J. (2009). Psychological interpretation of the ex-gaussian and shifted wald parameters: A diffusion model analysis. <em>Psychonomic Bulletin &amp; Review</em>, <em>16</em>(5), 798817. <a href="http://link.springer.com/article/10.3758/PBR.16.5.798">http://link.springer.com/article/10.3758/PBR.16.5.798</a>
+</div>
+<div id="ref-pfadt2025methodological" class="csl-entry" role="listitem">
+<span class="nocase">Pfadt, J. M., Bartoš, F., Godmann, H. R., Waaijers, M., Groot, L., Heo, I., et al.</span> (2025). A methodological metamorphosis: The rapid rise of bayesian inference and open science practices in psychology. <em>PsyArXiv</em>. <a href="https://doi.org/10.31234/osf.io/ck3js_v1">https://doi.org/10.31234/osf.io/ck3js_v1</a>
+</div>
+<div id="ref-R" class="csl-entry" role="listitem">
+R Core Team. (2024). <em>R: A language and environment for statistical computing</em>. R Foundation for Statistical Computing. <a href="https://www.R-project.org/">https://www.R-project.org/</a>
+</div>
+<div id="ref-ratcliff1976" class="csl-entry" role="listitem">
+Ratcliff, R., &amp; Murdock, B. B. (1976). Retrieval processes in recognition memory. <em>Psychological Review</em>, <em>83</em>(3), 190–214. <a href="https://doi.org/10.1037/0033-295X.83.3.190">https://doi.org/10.1037/0033-295X.83.3.190</a>
+</div>
+<div id="ref-python" class="csl-entry" role="listitem">
+Van Rossum, G., &amp; Drake, F. L. (2009). <em>Python 3 reference manual</em>. CreateSpace.
+</div>
+<div id="ref-vazire2018" class="csl-entry" role="listitem">
+Vazire, S. (2018). Implications of the credibility revolution for productivity, creativity, and progress. <em>Perspectives on Psychological Science</em>, <em>13</em>(4), 411–417. <a href="https://doi.org/10.1177/1745691617751884">https://doi.org/10.1177/1745691617751884</a>
+</div>
+<div id="ref-wilcox" class="csl-entry" role="listitem">
+Wilcox, R. R., &amp; Keselman, H. J. (2003). Modern robust data analysis methods: Measures of central tendency. <em>Psychological Methods</em>, <em>8</em>(3), 254274. <a href="https://doi.org/10.1037/1082-989X.8.3.254">https://doi.org/10.1037/1082-989X.8.3.254</a>
+</div>
+</div></section></div></main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

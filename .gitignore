@@ -1,0 +1,5 @@
+# Quarto render caches
+.quarto/
+
+# OS / editor junk
+.DS_Store

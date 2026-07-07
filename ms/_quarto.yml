@@ -1,0 +1,22 @@
+project:
+  title: "This Is Not the ex-Gaussian Model You Are Looking For"
+  render:
+    - /ms/ms.qmd
+
+format:
+  apaquarto-docx: default
+  apaquarto-typst:
+    documentmode: doc
+    csl: apa.csl
+  apaquarto-html:
+    toc: true
+    toc-depth: 2
+    toc-title: Manuscript Outline
+    toc-location: right
+    echo: true
+    code-tools: true
+    code-fold: true
+    code-summary: "Show R code"
+execute: 
+  echo: true
+  execute-dir: project
