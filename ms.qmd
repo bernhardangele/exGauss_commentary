@@ -1,6 +1,6 @@
 ---
 title: "This Is Not the ex-Gaussian Model You Are Looking For: On the Default Parameterization of Bayesian ex-Gaussian Models in brms"
-running-head: "Ex-Gauss Misuse"
+running-head: "Ex-Gaussian Parameterization in brms"
 author:
   - name: Jason Geller
     email: drjasongeller@gmail.com
