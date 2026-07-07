@@ -181,10 +181,12 @@ ggplot(d, aes(x = rt)) +
   geom_vline(data = annot, aes(xintercept = full_mean),
              linewidth = 0.5, colour = "black") +
   # sigma: double arrow spanning +/- sigma around mu (white, on the coloured fill).
-  geom_segment(data = annot, aes(x = mu - sigma, xend = mu + sigma, y = 0.5, yend = 0.5),
+  # Placed low (y = 0.22) so both arrowheads stay inside the fill for both
+  # conditions, including the narrower Low-Blur distribution.
+  geom_segment(data = annot, aes(x = mu - sigma, xend = mu + sigma, y = 0.22, yend = 0.22),
                arrow = grid::arrow(length = grid::unit(1.6, "mm"), ends = "both"),
                linewidth = 0.5, colour = "white") +
-  geom_text(data = annot, aes(x = mu, y = 0.63, label = "sigma"),
+  geom_text(data = annot, aes(x = mu, y = 0.33, label = "sigma"),
             parse = TRUE, size = 4.4, fontface = "bold", colour = "white") +
   # tau: rightward arrow over the tail (the exponential component stretches it right).
   geom_segment(data = annot, aes(x = full_mean, xend = full_mean + 2 * tau, y = 1.06, yend = 1.06),
