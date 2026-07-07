@@ -15,7 +15,7 @@ affiliations:
     name: Boston College
     department: Department of Psychology and Neuroscience
 abstract: |
-  The ex-Gaussian distribution is a popular tool for analyzing reaction-time (RT) data because it distinguishes the central portion of the distribution, summarized by the Gaussian parameters $\mu$ and $\sigma$, from its positively skewed tail, summarized by the exponential parameter $\tau$. Bayesian ex-Gaussian models can now be fit easily with the {brms} package in R, but the default parameterization contains a subtle pitfall: the parameter labeled `mu` represents the mean of the full ex-Gaussian distribution, $E(RT) = \mu + \tau$, rather than the location of the Gaussian component. Consequently, effects estimated on the default `mu` describe changes in the overall mean and can obscure genuine shifts in the Gaussian component. Using simulated data in which the Gaussian location and the exponential tail move in opposite directions—holding the overall mean constant—I show that the default model returns a null effect on `mu`, whereas a classical parameterization recovers the true 50-ms shift. I provide annotated {brms} code for both parameterizations and argue that convenient software defaults should not replace careful attention to what a model's parameters actually estimate.
+ The ex-Gaussian distribution is a popular model for analyzing reaction-time (RT) data because it separates the central portion of the distribution — captured by the Gaussian parameters $\mu$ and $\sigma$ — from its positively skewed tail, captured by the exponential parameter $\tau$. With Bayesian methods increasingly accessible and low in technical overhead, ex-Gaussian models can now be fit with relative ease. In R, the `brms` package makes this especially straightforward. However, the default parameterization adopted by many researchers contains a subtle pitfall: the parameter labeled `mu` represents the mean of the *full* ex-Gaussian distribution, $E(RT) = \mu + \tau$, rather than the location of the Gaussian component alone. Consequently, effects estimated on the default `mu` describe changes in the overall mean and can obscure genuine shifts in the Gaussian component itself. Using simulated data in which the Gaussian location and the exponential tail shift in opposite directions — holding the overall mean constant — I show that the default model returns a null effect on `mu`, whereas the classical parameterization recovers the true 50-ms shift. I provide annotated R code using `{brms}` and demonstrate how to fit the correct parameterization. Researchers should pay careful attention to what a model's parameters actually estimate.
 keywords:
   - ex-Gaussian
   - reaction time
@@ -49,7 +49,7 @@ In this commentary, I demonstrate what the default parameterization of the ex-Ga
 
 ## Example
 
-To demonstrate the issue with fitting the default ex-Gaussian model in {brms}, I simulate data using a comparison adapted from one of my own studies [@geller2025] in R version 4.6.0 [@R]. This allows the methodological issue to be illustrated without singling out any particular researchers or journals, although published examples of this interpretive problem do exist.
+To demonstrate the issue with fitting the default ex-Gaussian model in {brms}, I simulate data using a comparison adapted from one of my own studies [@geller2025] in R (version 4.6.0; [@R]. This allows the methodological issue to be illustrated without singling out any particular researchers or journals, although published examples of this interpretive problem do exist.
 
 In @geller2025, we examined how perceptual disfluency—manipulated by varying the level of blur applied to words—influenced reaction times in a lexical decision task (i.e., is this letter string a word?), and whether these effects were related to recognition memory. In that study, low blur affected early stages of encoding, reflected in the Gaussian location parameter $\mu$, but not the later, tail component captured by $\tau$. For the present illustration, however, I construct a sharper scenario in which $\mu$ and $\tau$ differ in opposite directions so that the two conditions share the same expected reaction time. Using the `rexgaussian2()` function from the {brms.exgaussian} package, I simulate ex-Gaussian data for clearly presented and low-blur words in which $\mu$ is set to 500 ms and 550 ms, $\tau$ to 100 ms and 50 ms, and $\sigma$ to 60 ms in both conditions (see @tbl-exgauss).
 
@@ -62,6 +62,8 @@ library(brms)
 library(brms.exgaussian)
 library(tinytable)
 library(easystats)
+library(ggplot2)
+library(ggdist)
 
 # Tidy an easystats estimate object for display: merge contrast levels into a
 # single "Contrast" column, drop ROPE columns, and combine the CI bounds into
@@ -104,7 +106,7 @@ clean_estimate <- function(x, digits = 1) {
 #   mu    = location of the Gaussian component
 #   sigma = SD of the Gaussian component
 #   tau   = mean of the exponential component (the skewed tail)
-parameters <- data.frame(
+sim_params <- data.frame(
   Blur = c("Clear", "Low-Blur"),
   mu = c(500, 550),
   sigma = c(60, 60),
@@ -112,10 +114,10 @@ parameters <- data.frame(
 )
 
 # Expected RT of an ex-Gaussian is mu + tau; shown as a reference column.
-parameters$full_mean <- parameters$mu + parameters$tau
+sim_params$full_mean <- sim_params$mu + sim_params$tau
 
 # Relabel columns with Greek symbols for display.
-param_table <- parameters
+param_table <- sim_params
 colnames(param_table) <- c("Blur", "μ", "σ", "τ", "Expected RT")
 
 tt(param_table)
@@ -144,11 +146,73 @@ parameter_index <- as.integer(d$Blur)
 # Draw reaction times from the ex-Gaussian using each trial's condition values.
 d$rt <- brms.exgaussian::rexgaussian2(
   n = nrow(d),
-  mu = parameters$mu[parameter_index],
-  sigma = parameters$sigma[parameter_index],
-  tau = parameters$tau[parameter_index]
+  mu = sim_params$mu[parameter_index],
+  sigma = sim_params$sigma[parameter_index],
+  tau = sim_params$tau[parameter_index]
 )
 
+```
+
+@fig-datagen shows the simulated RT distribution for each condition and how the
+three ex-Gaussian parameters shape it: $\mu$ locates the Gaussian component,
+$\sigma$ sets its spread, and $\tau$ stretches the right tail. Because the increase
+in $\mu$ from Clear to Low-Blur is offset by an equal decrease in $\tau$, the overall
+mean $E(RT) = \mu + \tau$ is identical (600 ms) in both conditions.
+
+```{r}
+#| label: fig-datagen
+#| fig-cap: "Simulated reaction-time distributions for each condition, annotated with the ex-Gaussian parameters. The dashed line marks the Gaussian location $\\mu$; the double arrow spans $\\pm\\sigma$ around it (the Gaussian spread); the rightward arrow over the tail marks the exponential component $\\tau$, which stretches the distribution to the right; and the solid line marks the overall mean $E(RT) = \\mu + \\tau$, which is 600 ms in both conditions. The bottom span highlights that $E(RT)$ is the mean of the *entire* distribution — the quantity the default `brms` `mu` estimates."
+#| echo: false
+#| fig-width: 6.5
+#| fig-height: 4.7
+
+# E(RT) = mu + tau, used to place the annotations.
+annot <- sim_params
+# Horizontal extent used for the "entire distribution" span.
+annot$lo <- annot$mu - 2.5 * annot$sigma
+annot$hi <- annot$full_mean + 4 * annot$tau
+
+ggplot(d, aes(x = rt)) +
+  # RT distribution for each condition (kernel density via ggdist).
+  ggdist::stat_slab(aes(fill = Blur), normalize = "panels", color = NA, alpha = 0.85) +
+  # mu: Gaussian location (dashed) and E(RT) = mu + tau (solid).
+  geom_vline(data = annot, aes(xintercept = mu),
+             linetype = "dashed", linewidth = 0.5, colour = "grey25") +
+  geom_vline(data = annot, aes(xintercept = full_mean),
+             linewidth = 0.5, colour = "black") +
+  # sigma: double arrow spanning +/- sigma around mu (white, on the coloured fill).
+  geom_segment(data = annot, aes(x = mu - sigma, xend = mu + sigma, y = 0.5, yend = 0.5),
+               arrow = grid::arrow(length = grid::unit(1.6, "mm"), ends = "both"),
+               linewidth = 0.5, colour = "white") +
+  geom_text(data = annot, aes(x = mu, y = 0.63, label = "sigma"),
+            parse = TRUE, size = 4.4, fontface = "bold", colour = "white") +
+  # tau: rightward arrow over the tail (the exponential component stretches it right).
+  geom_segment(data = annot, aes(x = full_mean, xend = full_mean + 2 * tau, y = 1.06, yend = 1.06),
+               arrow = grid::arrow(length = grid::unit(1.9, "mm"), ends = "last"),
+               linewidth = 0.5, colour = "grey20") +
+  geom_text(data = annot, aes(x = full_mean + tau, y = 1.16, label = "tau~(tail)"),
+            parse = TRUE, size = 4.4, fontface = "bold") +
+  # axis-side labels for mu and E(RT) (nudged apart so they don't overlap).
+  geom_text(data = annot, aes(x = mu, y = -0.09, label = "mu"),
+            parse = TRUE, size = 4.6, fontface = "bold", colour = "grey20",
+            hjust = 1, nudge_x = -8) +
+  geom_text(data = annot, aes(x = full_mean, y = -0.09, label = "E(RT)"),
+            size = 4, fontface = "bold", hjust = 0, nudge_x = 8) +
+  # entire distribution: full-width span (its mean is E(RT); see caption).
+  geom_segment(data = annot, aes(x = lo, xend = hi, y = -0.19, yend = -0.19),
+               arrow = grid::arrow(length = grid::unit(1.4, "mm"), ends = "both"),
+               linewidth = 0.4, colour = "grey45") +
+  geom_text(data = annot, aes(x = (lo + hi) / 2, y = -0.28, label = "entire distribution"),
+            size = 3.3, colour = "grey30") +
+  facet_wrap(~ Blur, ncol = 1) +
+  scale_fill_manual(values = c("Clear" = "darkgreen", "Low-Blur" = "darkred"),
+                    guide = "none") +
+  coord_cartesian(ylim = c(-0.32, 1.28), xlim = c(250, 1150), clip = "off") +
+  labs(x = "Reaction time (ms)", y = NULL) +
+  theme_minimal(base_size = 11) +
+  theme(axis.text.y = element_blank(),
+        panel.grid = element_blank(),
+        strip.text = element_text(face = "bold"))
 ```
 
 ### Estimating Ex-Gaussian Parameters with `{easystats}`
