@@ -121,9 +121,12 @@ colnames(param_table) <- c("Blur", "μ", "σ", "τ", "Expected RT")
 tt(param_table)
 ```
 
-We sample with replacement 10000 times to get the dataset we want to use.
+We then draw 100 reaction times per condition (200 in total) from the ex-Gaussian distributions defined by these parameters.
 
 ```{r}
+# Fix the random seed so the simulated data are identical on every render.
+set.seed(1234)
+
 # Number of simulated trials per condition (200 observations in total).
 n_per_group <- 100
 
