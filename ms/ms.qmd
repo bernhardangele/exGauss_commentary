@@ -15,7 +15,31 @@ affiliations:
     name: Boston College
     department: Department of Psychology and Neuroscience
 abstract: |
-The ex-Gaussian distribution is a popular model for analyzing reaction-time (RT) data because it separates the central portion of the distribution, captured by the Gaussian parameters $\mu$ and $\sigma$, from the positively skewed tail, captured by the exponential parameter $\tau$. As Bayesian methods have become increasingly accessible, complex ex-Gaussian models can now be fit with relative ease. In R, the brms package makes this especially straightforward. However, the default parameterization used by many researchers contains a subtle but important pitfall: the parameter labeled mu represents the mean of the full ex-Gaussian distribution, $E(RT) = \mu + \tau$, rather than the location of the Gaussian component alone. Consequently, effects estimated on the default mu describe changes in the overall mean and can obscure genuine shifts in the Gaussian component itself.Using simulated data in which the Gaussian location and the exponential tail shift in opposite directions while holding the overall mean constant, I show that the default model returns a null effect on mu, whereas the classical parameterization recovers the true 50-ms shift in the Gaussian component. I then demonstrate how to fit the classical parameterization directly in {brms}. My hope is that this commentary will help researchers and reviewers better understand the models they are fitting, ensure that the parameters match their theoretical questions, and more accurately evaluate ex-Gaussian models reported in the literature.
+  The ex-Gaussian distribution is a popular model for analyzing reaction-time
+  (RT) data because it separates the central portion of the distribution,
+  captured by the Gaussian parameters $\mu$ and $\sigma$, from the positively
+  skewed tail, captured by the exponential parameter $\tau$. As Bayesian methods
+  have become increasingly accessible, complex ex-Gaussian models can now be fit
+  with relative ease. In R, the {brms} package makes this especially
+  straightforward. However, it is important to recognize that the default
+  parameterization offered by {brms} does not map onto the classical
+  parameterization familiar to many researchers in the cognitive sciences. As a
+  result, some published studies may have drawn incorrect inferences from
+  effects estimated on the default $\mu$ parameter. In the default {brms} model,
+  $\mu$ indexes the mean of the full ex-Gaussian distribution rather than the
+  location of the Gaussian component alone. This distinction matters because
+  changes in the Gaussian location and changes in the exponential tail can
+  offset one another at the level of the overall mean. Using simulated data in
+  which blurred and clear words have Gaussian locations and exponential tail
+  shifts that move in opposite directions—holding the overall distributional
+  mean constant—I show that the default parameterization returns a null 
+  effect on $/mu$, whereas the classical parameterization
+  recovers the true shift in the Gaussian component. I then demonstrate how to
+  fit the classical parameterization directly in {brms}. My hope is that this
+  commentary will help researchers and reviewers better understand the models
+  they are fitting, ensure that model parameters match their theoretical
+  questions, and more accurately evaluate ex-Gaussian models reported in the
+  literature.
 keywords:
   - ex-Gaussian
   - reaction time
