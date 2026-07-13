@@ -14,32 +14,32 @@ affiliations:
   - id: 1
     name: Boston College
     department: Department of Psychology and Neuroscience
-abstract: |
-  The ex-Gaussian distribution is a popular model for analyzing reaction-time
-  (RT) data because it separates the central portion of the distribution,
-  captured by the Gaussian parameters $\mu$ and $\sigma$, from the positively
-  skewed tail, captured by the exponential parameter $\tau$. As Bayesian methods
-  have become increasingly accessible, complex ex-Gaussian models can now be fit
-  with relative ease. In R, the {brms} package makes this especially
-  straightforward. However, it is important to recognize that the default
-  parameterization offered by {brms} does not map onto the classical
-  parameterization familiar to many researchers in the cognitive sciences. As a
-  result, some published studies may have drawn incorrect inferences from
-  effects estimated on the default $\mu$ parameter. In the default {brms} model,
-  $\mu$ indexes the mean of the full ex-Gaussian distribution rather than the
-  location of the Gaussian component alone. This distinction matters because
-  changes in the Gaussian location and changes in the exponential tail can
-  offset one another at the level of the overall mean. Using simulated data in
-  which blurred and clear words have Gaussian locations and exponential tail
-  shifts that move in opposite directions—holding the overall distributional
-  mean constant—I show that the default parameterization returns a null 
-  effect on $/mu$, whereas the classical parameterization
-  recovers the true shift in the Gaussian component. I then demonstrate how to
-  fit the classical parameterization directly in {brms}. My hope is that this
-  commentary will help researchers and reviewers better understand the models
-  they are fitting, ensure that model parameters match their theoretical
-  questions, and more accurately evaluate ex-Gaussian models reported in the
-  literature.
+abstract:
+    The ex-Gaussian distribution is a popular model for analyzing reaction-time
+    (RT) data because it separates the central portion of the distribution,
+    captured by the Gaussian parameters $\mu$ and $\sigma$, from the positively
+    skewed tail, captured by the exponential parameter $\tau$. As Bayesian methods
+    have become increasingly accessible, complex ex-Gaussian models can now be fit
+    with relative ease. In R, the {brms} package makes this especially
+    straightforward. However, it is important to recognize that the default
+    parameterization offered by {brms} does not map onto the classical
+    parameterization familiar to many researchers in the cognitive sciences. As a
+    result, some published studies may have drawn incorrect inferences from
+    effects estimated on the default $\mu$ parameter. In the default {brms} model,
+    $\mu$ indexes the mean of the full ex-Gaussian distribution rather than the
+    location of the Gaussian component alone. This distinction matters because
+    changes in the Gaussian location and changes in the exponential tail can
+    offset one another at the level of the overall mean. Using simulated data in
+    which blurred and clear words have Gaussian locations and exponential tail
+    shifts that move in opposite directions—holding the overall distributional
+    mean constant—I show that the default parameterization returns a null
+    effect on $\mu$, whereas the classical parameterization
+    recovers the true shift in the Gaussian component. I then demonstrate how to
+    fit the classical parameterization directly in {brms}. My hope is that this
+    commentary will help researchers and reviewers better understand the models
+    they are fitting, ensure that model parameters match their theoretical
+    questions, more accurately evaluate ex-Gaussian models reported in the
+    literature.
 keywords:
   - ex-Gaussian
   - reaction time
@@ -78,10 +78,10 @@ knitr:
     tbl-pos: "h"
     fig-dpi: 300
 format:
-  apaquarto-docx: default
   apaquarto-typst:
     documentmode: doc
     csl: apa.csl
+  apaquarto-docx: default
   apaquarto-html:
     toc: true
     toc-depth: 2
@@ -93,99 +93,22 @@ format:
     code-summary: "Show R code"
 ---
 
-Over the past two decades, psychology has seen a substantial increase in the
-application of Bayesian data analysis methods as a supplement to widely used
-frequentist methods [@pfadt2025methodological]. This shift has been driven by
-the increasing availability of computational tools that have made fitting
-Bayesian models both practical and efficient. Programming languages like R [@R],
-Python [@python], and Julia [@julia] provide libraries and packages that allow
-researchers to fit Bayesian models with little technical overhead. In addition,
-growing dissatisfaction with null-hypothesis significance testing (NHST) and its
-associated pitfalls (e.g., p-value misinterpretation and dichotomous thinking),
-together with the replication crisis/credibility revolution [@vazire2018],
-has pushed many researchers toward statistical alternatives.
+Over the past two decades, psychology has seen a substantial increase in the application of Bayesian data analysis methods as a supplement to widely used frequentist methods [@pfadt2025methodological]. This shift has been driven by the increasing availability of computational tools that have made fitting Bayesian models both practical and efficient. Programming languages like R [@R], Python [@python], and Julia [@julia] provide libraries and packages that allow researchers to fit Bayesian models with little technical overhead. In addition, growing dissatisfaction with null-hypothesis significance testing (NHST) and its associated pitfalls (e.g., p-value misinterpretation and dichotomous thinking), together with the replication crisis/credibility revolution [@vazire2018], has pushed many researchers toward statistical alternatives.
 
-One domain that has seen an increase in the adoption of Bayesian methods is the
-analysis of response time (RT) data in the language sciences, where RTs are routinely used as measures of
-processing speed, decision difficulty, and cognitive efficiency. Traditionally,
-RT data have often been analyzed using summary statistics such as the mean or
-median. However, RT distributions are typically positively skewed, bounded at
-zero, and characterized by substantial variability both within and between
-individuals [@wilcox]. Moreover, experimental manipulations may affect not only
-the central tendency of the distribution but also its variability or upper tail.
-Consequently, analyses based solely on the mean or median can obscure
-theoretically meaningful distributional effects, motivating calls to move beyond
-mean-based analyses of RT data [@balota2011].
+One domain that has seen an increase in the adoption of Bayesian methods is the analysis of response time (RT) data in the language sciences, where RTs are routinely used as measures of processing speed, decision difficulty, and cognitive efficiency. Traditionally, RT data have often been analyzed using summary statistics such as the mean or median. However, RT distributions are typically positively skewed, bounded at zero, and characterized by substantial variability both within and between individuals [@wilcox]. Moreover, experimental manipulations may affect not only the central tendency of the distribution but also its variability or upper tail. Consequently, analyses based solely on the mean or median can obscure theoretically meaningful distributional effects, motivating calls to move beyond mean-based analyses of RT data [@balota2011].
 
+One way to move beyond the mean is to model the full shape of the RT distribution. Mathematical models provide a flexible way to do so, allowing researchers to draw inferences about the psychological processes—such as memory, attention, and language—that give rise to observed response times. One model that has become especially popular for this purpose is the ex-Gaussian model [@ratcliff1976]. The ex-Gaussian distribution is formed by the convolution of a Gaussian distribution and an exponential distribution and is characterized by three parameters: $\mu$, $\sigma$, and $\tau$. The parameter $\mu$ represents the mean of the Gaussian component, whereas $\sigma$ represents its standard deviation. The $\tau$ parameter represents both the mean and standard deviation of the exponential component and primarily governs the length of the distribution’s positively skewed upper tail. The overall mean of the ex-Gaussian distribution is μ + τ, and its variance is σ² + τ² . Although these parameters have been used to infer cognitive processes such as automaticity and cognitive control/inhibition, these interpretations are not inherent to the parameters and should be made cautiously [@matzke2009].
 
-One way to move beyond the mean is to model the full shape of the RT
-distribution. Mathematical models provide a flexible way to do so, allowing
-researchers to draw inferences about the psychological processes—such as memory,
-attention, and language—that give rise to observed response times. One model
-that has become especially popular for this purpose is the ex-Gaussian model
-[@ratcliff1976]. The ex-Gaussian distribution is formed by the convolution of a
-Gaussian distribution and an exponential distribution and is characterized by
-three parameters: $\mu$, $\sigma$, and $\tau$. The parameter $\mu$ represents the mean of the
-Gaussian component, whereas $\sigma$ represents its standard deviation. The $\tau$ parameter 
-represents both the mean and standard deviation of the exponential component and
-primarily governs the length of the distribution’s positively skewed upper tail.
-The overall mean of the ex-Gaussian distribution is μ + τ, and its variance is
-σ² + τ² . Although these parameters have been used to infer cognitive processes
-such as automaticity and cognitive control/inhibition, these interpretations are
-not inherent to the parameters and should be made cautiously [@matzke2009].
+The ex-Gaussian model can be fit within a Bayesian framework relatively easily using the {brms} package in R which provides a high-level interface to the probablitsic programming language Stan [@stan]. The {brms} package supports a wide range of response distributions, including the ex-Gaussian family, and allows researchers to incorporate complex model structures at both the participant and item levels as well as across different parameters. This accessibility has contributed to the growing use of Bayesian ex-Gaussian models in reaction-time research. However, an important complication arises from the default parameterization used by {brms}. Although the model is straightforward to estimate, its default specification does not necessarily provide direct access to the parameter-specific comparisons researchers often wish to make.
 
-The ex-Gaussian model can be fit within a Bayesian framework relatively easily
-using the {brms} package in R which provides a high-level interface to the probablitsic programming 
-language Stan [@stan]. The {brms} package supports a wide range of response distributions, including
-the ex-Gaussian family, and allows researchers to incorporate complex model
-structures at both the participant and item levels as well as across different
-parameters. This accessibility has contributed to the growing use of Bayesian
-ex-Gaussian models in reaction-time research. However, an important complication
-arises from the default parameterization used by {brms}. Although the model is
-straightforward to estimate, its default specification does not necessarily
-provide direct access to the parameter-specific comparisons researchers often
-wish to make.
+The central problem is that the parameter labeled $\mu$ in the default {brms} ex-Gaussian model does not correspond to the mean of the Gaussian component in the conventional parameterization. Instead, the quantity modeled as $\mu$ in {brms} represents the mean of the full ex-Gaussian distribution. Under the conventional parameterization, this quantity is equal to $\mu_{\mathrm{Gaussian}} + \tau$. Consequently, regression effects estimated for the default $\mu$ parameter reflect changes in a composite quantity that combines the Gaussian location and exponential tail components. Such effects therefore cannot be interpreted directly as changes in the Gaussian component or in typical response speed. To recover the conventional Gaussian mean, it is necessary to derive it from the model parameters as $\mu_{\mathrm{Gaussian}} =
+\mu_{\mathrm{brms}} - \tau$ or to specify an alternative parameterization that models the conventional ex-Gaussian parameters directly.
 
-The central problem is that the parameter labeled $\mu$ in the default {brms}
-ex-Gaussian model does not correspond to the mean of the Gaussian component in
-the conventional parameterization. Instead, the quantity modeled as $\mu$ in
-{brms} represents the mean of the full ex-Gaussian distribution. Under the
-conventional parameterization, this quantity is equal to
-$\mu_{\mathrm{Gaussian}} + \tau$. Consequently, regression effects estimated for
-the default $\mu$ parameter reflect changes in a composite quantity that
-combines the Gaussian location and exponential tail components. Such effects
-therefore cannot be interpreted directly as changes in the Gaussian component or
-in typical response speed. To recover the conventional Gaussian mean, it is
-necessary to derive it from the model parameters as $\mu_{\mathrm{Gaussian}} =
-\mu_{\mathrm{brms}} - \tau$ or to specify an alternative parameterization that
-models the conventional ex-Gaussian parameters directly.
-
-In this commentary, we demonstrate what the default parameterization of the
-ex-Gaussian model in {brms} actually provides and then show how to specify the
-model so that its parameters correspond to the conventional ex-Gaussian
-parameters used in reaction-time research. The goal is to improve the accuracy
-and interpretability of inferences drawn from these models. This issue is
-particularly important because the ex-Gaussian distribution is widely used to
-distinguish changes in the central portion of the RT distribution from changes
-in its posietively skewed tail.
-
+In this commentary, we demonstrate what the default parameterization of the ex-Gaussian model in {brms} actually provides and then show how to specify the model so that its parameters correspond to the conventional ex-Gaussian parameters used in reaction-time research. The goal is to improve the accuracy and interpretability of inferences drawn from these models. This issue is particularly important because the ex-Gaussian distribution is widely used to distinguish changes in the central portion of the RT distribution from changes in its posietively skewed tail.
 
 ## Simulation Example
 
-To demonstrate the issue with fitting the default ex-Gaussian model in {brms}, I
-simulate data using a comparison adapted from one of my own studies
-[@geller2025] in R [version 4.6.0; @R]. In @geller2025, we examined how
-perceptual disfluency—manipulated by varying the level of blur applied to
-letter strings influenced reaction times in a lexical decision task (i.e., is this letter
-string a word?), and whether these effects were related to how well someone remembers the words in a reconition memory task.
-In that study, low blur affected early stages of encoding, reflected in the
-Gaussian location parameter $\mu$, but not the later, tail component captured by
-$\tau$. For the present illustration, however, I construct a sharper scenario in
-which $\mu$ and $\tau$ differ in opposite directions so that the two conditions
-share the same expected reaction time. Using the `rexgaussian2()` function from
-the {brms.exgaussian} package, I simulate ex-Gaussian data for clearly presented
-and low-blur words in which $\mu$ is set to 500 ms and 550 ms, $\tau$ to 100 ms
-and 50 ms, and $\sigma$ to 60 ms in both conditions (see @tbl-exgauss).
+To demonstrate the issue with fitting the default ex-Gaussian model in {brms}, I simulate data using a comparison adapted from one of my own studies [@geller2025] in R [version 4.6.0; @R]. In @geller2025, we examined how perceptual disfluency—manipulated by varying the level of blur applied to letter strings influenced reaction times in a lexical decision task (i.e., is this letter string a word?), and whether these effects were related to how well someone remembers the words in a reconition memory task. In that study, low blur affected early stages of encoding, reflected in the Gaussian location parameter $\mu$, but not the later, tail component captured by $\tau$. For the present illustration, however, I construct a sharper scenario in which $\mu$ and $\tau$ differ in opposite directions so that the two conditions share the same expected reaction time. Using the `rexgaussian2()` function from the {brms.exgaussian} package, I simulate ex-Gaussian data for clearly presented and low-blur words in which $\mu$ is set to 500 ms and 550 ms, $\tau$ to 100 ms and 50 ms, and $\sigma$ to 60 ms in both conditions (see @tbl-exgauss).
 
 ```{r}
 #| label: load-packages
@@ -257,11 +180,13 @@ colnames(param_table) <- c("Blur", "μ", "σ", "τ", "Expected RT")
 
 tt(param_table)
 ```
+
 ### Simulate the Data
 
 We first draw 100 reaction times per condition (200 in total) from the ex-Gaussian distributions defined by these parameters.
 
 ```{r}
+#| label: simulate-data
 # Fix the random seed so the simulated data are identical on every render.
 set.seed(1234)
 
@@ -289,11 +214,7 @@ d$rt <- brms.exgaussian::rexgaussian2(
 
 ```
 
-@fig-datagen shows the simulated RT distribution for each condition and how the
-three ex-Gaussian parameters shape it: $\mu$ locates the Gaussian component,
-$\sigma$ sets its spread, and $\tau$ stretches the right tail. Because the increase
-in $\mu$ from Clear to Low-Blur is offset by an equal decrease in $\tau$, the overall
-mean $E(RT) = \mu + \tau$ is identical (600 ms) in both conditions.
+@fig-datagen shows the simulated RT distribution for each condition and how the three ex-Gaussian parameters shape it: $\mu$ locates the Gaussian component, $\sigma$ sets its spread, and $\tau$ stretches the right tail. Because the increase in $\mu$ from Clear to Low-Blur is offset by an equal decrease in $\tau$, the overall mean $E(RT) = \mu + \tau$ is identical (600 ms) in both conditions.
 
 ```{r}
 #| label: fig-datagen
@@ -374,6 +295,7 @@ Both the expected response and the exponential component are allowed to vary acr
 The priors were selected to reflect the known scale of the simulated data while remaining sufficiently broad to allow the model to recover deviations from the generating values.
 
 ```{r}
+#| label: priors-default
 priors_default <- c(
   # mu intercept: centered at 600 ms, the expected RT (E(RT)) of the reference
   # condition in this default parameterization.
@@ -452,6 +374,7 @@ The prior $\mathcal{N}(0,0.5)$ places reasonable prior mass near this value whil
 The model can then be fit as follows:
 
 ```{r}
+#| label: fit-brms-default
 fit_brms <- brm(
   bf(
     rt ~ Blur,      # mu submodel: here mu is E(RT), not the Gaussian location
@@ -469,9 +392,10 @@ fit_brms <- brm(
   seed = 1234              # reproducible draws
 )
 ```
+
 ### Estimating Ex-Gaussian Parameters with `{easystats}`
 
-The `{modelbased}` package, which is part of the `{easystats}` ecosystem, can easily be used to obtain condition-specific posterior estimates from a fitted `brms` model. The `estimate_means()` function returns estimated parameters for each condition, back-transformed, so estimates are presented on time scale,  whereas `estimate_contrasts()` computes differences between conditions. 
+The `{modelbased}` package, which is part of the `{easystats}` ecosystem, can easily be used to obtain condition-specific posterior estimates from a fitted `brms` model. The `estimate_means()` function returns estimated parameters for each condition, back-transformed, so estimates are presented on time scale, whereas `estimate_contrasts()` computes differences between conditions.
 
 As shown in @tbl-exgauss, the present data were generated so that the two conditions have the same expected reaction time but differ in the Gaussian and exponential components of the ex-Gaussian distribution.
 
@@ -486,6 +410,7 @@ Thus, the 50-ms increase in $\mu$ for the Low-Blur condition is offset by a 50-m
 Condition-specific estimates of the expected response can be obtained with `estimate_means()` and setting `predict` argument to "mu":
 
 ```{r}
+#| label: estimate-mu-default
 # Default model: per-condition mu, which equals E(RT) in this parameterization.
 overall_means <- estimate_means(
   fit_brms,
@@ -508,6 +433,7 @@ Because the primary `mu` parameter in the default `brms` ex-Gaussian model repre
 The corresponding contrast can be obtained using `estimate_contrasts()`:
 
 ```{r}
+#| label: contrast-mu-default
 # Default model: Blur contrast in E(RT) (≈ 0 by design).
 overall_difference <- estimate_contrasts(
   fit_brms,
@@ -539,6 +465,7 @@ $$\beta = \tau.$$
 Condition-specific estimates can be obtained by requesting predictions for `beta`:
 
 ```{r}
+#| label: estimate-beta-default
 # Default model: per-condition beta (the exponential mean = classical tau).
 tau_estimates_default <- estimate_means(
   fit_brms,
@@ -563,6 +490,7 @@ These estimates should be approximately 100 ms for Clear and 50 ms for Low-Blur.
 The corresponding contrast can be obtained using:
 
 ```{r}
+#| label: contrast-beta-default
 # Default model: Blur contrast in beta (the exponential component).
 tau_difference_default <- estimate_contrasts(
   fit_brms,
@@ -579,15 +507,17 @@ tau_difference_default <- estimate_contrasts(
 #| results: asis
 tt(clean_estimate(tau_difference_default))
 ```
-As we can see in @tbl-default-beta-contrast, the differnce between the two conditions is approximetly 50 ms. 
+
+As we can see in @tbl-default-beta-contrast, the differnce between the two conditions is approximetly 50 ms.
 
 ## Classical Ex-Gaussian Parameterization
 
-As we have shown above, the default paramterization gives you the exected RT of the entire distribution. We can instead fit the model using the `{brms.exgaussian}` package, which implements the classical ex-Gaussian parameterization. In this model, $\mu$  represents the location of the Gaussian component and $\tau$ represents the mean of the exponential component. 
+As we have shown above, the default paramterization gives you the exected RT of the entire distribution. We can instead fit the model using the `{brms.exgaussian}` package, which implements the classical ex-Gaussian parameterization. In this model, $\mu$ represents the location of the Gaussian component and $\tau$ represents the mean of the exponential component.
 
-We first define the custom family and Stan functions from the {brms.exgaussian} package: 
+We first define the custom family and Stan functions from the {brms.exgaussian} package:
 
 ```{r}
+#| label: exgaussian-family-setup
 # Custom family that reparameterizes brms so mu is the Gaussian location.
 exg_stanvars <- exgaussian2_stancode()  # Stan code injected into the model
 exg_family <- exgaussian2()             # the custom family definition
@@ -598,6 +528,7 @@ exg_family <- exgaussian2()             # the custom family definition
 The priors for the classical model are specified as follows:
 
 ```{r}
+#| label: priors-classical
 priors_classical <- c(
   # mu intercept: centered at 500 ms, now the Gaussian location of the
   # reference condition (not E(RT)).
@@ -644,6 +575,7 @@ The coefficient for `Blur` on `mu` and the exponential-component priors are unch
 The model is then fit using:
 
 ```{r}
+#| label: fit-brms-classical
 fit_brms_new <- brm(
   bf(
     rt ~ Blur,      # mu submodel: here mu IS the Gaussian location
@@ -661,13 +593,14 @@ fit_brms_new <- brm(
   cores = 4,
   seed = 1234
 )
-``
+```
 
 ### Estimating the Gaussian-Location Parameter
 
 For the classical model, estimates from the primary regression formula correspond to the Gaussian-location parameter $\mu$:
 
 ```{r}
+#| label: estimate-mu-classical
 # Classical model: per-condition mu, now the Gaussian-location parameter.
 mu_estimates <- estimate_means(
   fit_brms_new,
@@ -690,6 +623,7 @@ The estimates are approximately 500 ms for Clear and 550 ms for Low-Blur.
 The contrast between the two can be obtained using:
 
 ```{r}
+#| label: contrast-mu-classical
 # Classical model: Blur contrast in the Gaussian-location parameter mu.
 mu_difference <- estimate_contrasts(
   fit_brms_new,
@@ -714,6 +648,7 @@ The posterior mean will not necessarily equal exactly 50 ms because of sampling 
 Condition-specific estimates of $\tau$ can be obtained by requesting predictions for the `tau` distributional parameter:
 
 ```{r}
+#| label: estimate-tau-classical
 # Classical model: per-condition tau (the exponential component).
 tau_estimates <- estimate_means(
   fit_brms_new,
@@ -736,6 +671,7 @@ The estimates should be close to 100 ms for Clear and 50 ms for Low-Blur.
 The corresponding contrast can be obtained using:
 
 ```{r}
+#| label: contrast-tau-classical
 # Classical model: Blur contrast in tau (the exponential component).
 tau_difference <- estimate_contrasts(
   fit_brms_new,
@@ -753,13 +689,11 @@ tau_difference <- estimate_contrasts(
 tt(clean_estimate(tau_difference))
 ```
 
-The results seen in @tbl-classical-tau-contrast are very similar to the defualt paramaterization. 
+The results seen in @tbl-classical-tau-contrast are very similar to the defualt paramaterization.
 
 This example illustrates the central difference between the two parameterizations. The default `brms` ex-Gaussian model directly estimates the expected response and labels that parameter `mu`. The exponential component is labeled `beta`, although it corresponds to the classical $\tau$ parameter. In contrast, the `{brms.exgaussian}` model uses `mu` for the Gaussian-location parameter and `tau` for the exponential mean, consistent with the classical parameterization commonly used in reaction-time research.
 
 ## Real Example
-
-
 
 ## Conclusion
 

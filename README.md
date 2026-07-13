@@ -62,6 +62,52 @@ quarto render ms.qmd --to apaquarto-html   # or just one format
 
 Rendering fits two Stan models, so the first run takes a few minutes.
 
+## Reproducing with Nix (recommended)
+
+Instead of installing Quarto, R, and every package by hand, this repo ships a
+`default.nix` (generated with the [`{rix}`](https://docs.ropensci.org/rix/) R package,
+see `create_env_dev.R`) that pins the exact versions of R, Quarto, TeX Live, CmdStan,
+and every R package (including `brms.exgaussian` and `cmdstanr` from their pinned
+GitHub commits) used to build this manuscript.
+
+**0. Install Nix** (skip if `nix --version` already works):
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
+```
+
+Restart your shell afterwards so `nix` is on your `PATH`.
+
+**1. Build the environment:**
+
+```bash
+nix-build
+```
+
+This downloads/builds R, Quarto, TeX Live, CmdStan, and all R packages pinned in
+`default.nix` into the Nix store (cached after the first run) and creates a `result`
+symlink pointing at the resulting shell derivation.
+
+**2. Enter a pure, reproducible shell and render:**
+
+```bash
+nix-shell --pure
+cd ms
+quarto render
+```
+
+`--pure` strips out your normal shell environment (PATH, R libraries, etc.) so the
+render only ever sees the packages pinned in `default.nix` — the same environment
+anyone else would get from the same file, regardless of what's installed on their
+machine. The shell hook automatically runs `install_cmdstan.R` to make sure CmdStan
+is built on first entry.
+
+To do it in one shot without leaving your normal shell:
+
+```bash
+nix-shell --pure --run "cd ms && quarto render"
+```
+
 ## Notes
 
 - Code chunks are shown in the output (`echo: true`) because the paper is written as a
