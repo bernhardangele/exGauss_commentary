@@ -155,7 +155,7 @@ clean_estimate <- function(x, digits = 1) {
 
 ```{r}
 #| label: tbl-exgauss
-#| tbl-cap: "Data-generating ex-Gaussian parameters for the Clear and Low-Blur conditions, with opposing changes in $\mu$ and $\tau$ that hold the expected response time ($\mu+\tau$) constant."
+#| tbl-cap: "Data-generating ex-Gaussian parameters for the Clear and Low-Blur conditions, with opposing changes in $\\mu$ and $\\tau$ that hold the expected response time ($\\mu+\\tau$) constant."
 #| echo: false
 #| results: asis
 

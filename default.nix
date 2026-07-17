@@ -62,6 +62,7 @@ let
       ggplot2
       knitr
       marginaleffects
+      qs2
       ragg
       reformulas
       rmarkdown

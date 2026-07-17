@@ -3,3 +3,7 @@
 
 # OS / editor junk
 .DS_Store
+
+# Large model output files
+*.qs2
+
