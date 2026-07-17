@@ -96,3 +96,35 @@ Before finalizing any changes to the manuscript or code:
 2. Check that the build completes with exit code 0.
 3. Ensure no model compilation or sampling errors occur in the R chunks (fits default and classical ex-Gaussian models via `cmdstanr`).
 4. Verify that generated files (`ms.html`, `ms.pdf`, and `ms.docx`) compile successfully without formatting warnings.
+
+## Troubleshooting & Lessons Learned
+
+### 1. LaTeX Escaping in Quarto YAML options
+* **Symptom**: `ERROR: YAMLException: unknown escape sequence` during rendering.
+* **Cause**: Double-quoted strings in YAML chunk options (like `#| tbl-cap: "..."` or `#| fig-cap: "..."`) interpret LaTeX backslashes as escape characters. For instance, `\mu` and `\tau` will trigger parsing errors because `\m` is not a valid escape sequence.
+* **Fix**: Use double backslashes (`\\mu` and `\\tau`) inside double quotes, or wrap the caption in single quotes (`'...'`), which do not evaluate backslash escapes.
+
+### 2. Numeric Initialization for Hierarchical ex-Gaussian Models
+* **Symptom**: `Chain Rejecting initial value: Log probability evaluates to log(0), i.e. negative infinity` or chains failing to start completely.
+* **Cause**: In complex ex-Gaussian models with hierarchical random effects, `tau` and `sigma` use log links to enforce positive values. Stan's default unconstrained random initialization in `[-2, 2]` causes group SD parameters to exponentiate (up to $e^2 \approx 7.3$). When subject random effects are drawn from $\mathcal{N}(0, 7.3)$, they blow up exponentially, creating extreme tail values (e.g. $e^{10} \approx 22,000\text{ ms}$) that cause numerical underflow/overflow.
+* **Fix**: Provide a complete initialization function (`inits = init_classical`) that specifies sensible start values for all parameters in the `parameters` block, particularly setting:
+  - Identity link intercept (`Intercept = 500`)
+  - Log link intercepts (`Intercept_sigma = log(60)` and `Intercept_tau = log(100)`)
+  - Log-scale random effects standard deviations (`sd_3 = rep(0.1, 4)` and `sd_4 = rep(0.1, 4)`) to very small values.
+  - Standardized random effects (`z_1` to `z_4`) to matrices of exactly 0.
+  - Cholesky correlation factors (`L_1` to `L_4`) to identity matrices.
+
+### 3. Dynamic Random Effect Dimension Mapping
+* **Symptom**: Dimension mismatch error on parameters like `z_2` or `z_4` (e.g., `dims declared=(4,240); dims found=(4,480)`).
+* **Cause**: The number of grouping levels (unique subjects and items) passed in initial values must exactly match the grouping levels in the filtered dataset passed to `brm()`. For example, filtering data to words only (excluding non-words) changes the count of unique targets.
+* **Fix**: Calculate grouping level dimensions (e.g., `N_source` and `N_target`) *after* subsetting/filtering the dataset:
+  ```R
+  data_fit <- exp2_data_to_include %>% filter(corr == 1 & StimulusType == "Word" & rt > 250 & rt < 1800)
+  N_source <- length(unique(data_fit$source))
+  N_target <- length(unique(data_fit$Target))
+  ```
+
+### 4. Large Model Serialization
+* **Symptom**: Model fit objects are extremely large (~290MB) and hit GitHub file limits.
+* **Fix**: Use `library(qs2)` and `qs_save(fit, "path.qs2")` for highly compressed and fast R object serialization, and ensure `*.qs2` is added to `.gitignore`.
+
