@@ -1,0 +1,26 @@
+{
+  "name": "Cued LDT manuscript (Rocker)",
+  "image": "bangele1/analysis-in-a-box-exg:latest",
+  "forwardPorts": [8797],
+  "containerEnv": {
+    "PASSWORD": "${localEnv:RSTUDIO_PASSWORD}",
+    "CMDSTAN": "/opt/cmdstan/cmdstan-2.39.0"
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "r.rterm.linux": "/usr/local/bin/R",
+        "r.bracketedPaste": true,
+        "r.plot.view": "Two"
+      },
+      "extensions": [
+        "REditorSupport.r",
+        "tamasfe.even-better-toml",
+        "quarto.quarto"
+      ]
+    }
+  },
+  "remoteUser": "root",
+  "postStartCommand": "chmod -R 777 /workspaces && ln -s /workspaces /home/rstudio/project && /usr/lib/rstudio-server/bin/rserver --server-daemonize=1 --www-port=8797"
+}
+
