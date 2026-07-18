@@ -1,6 +1,7 @@
 {
   "name": "Cued LDT manuscript (Rocker)",
   "image": "bangele1/analysis-in-a-box-exg:latest",
+  "initializeCommand": "mkdir -p ~/.docker && sed -i.bak 's/\"credsStore\": *\"osxkeychain\"/\"credsStore\": \"\"/g' ~/.docker/config.json || true",
   "forwardPorts": [8797],
   "containerEnv": {
     "PASSWORD": "${localEnv:RSTUDIO_PASSWORD}",
@@ -23,4 +24,3 @@
   "remoteUser": "root",
   "postStartCommand": "chmod -R 777 /workspaces && ln -s /workspaces /home/rstudio/project && /usr/lib/rstudio-server/bin/rserver --server-daemonize=1 --www-port=8797"
 }
-
