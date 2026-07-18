@@ -121,6 +121,16 @@ library(tinytable)
 library(easystats)
 library(ggplot2)
 library(ggdist)
+library(qs2)
+
+# Check if split .qs2 files need to be combined (e.g. after a fresh git clone)
+split_qs2_script <- if (file.exists("split_qs2.R")) "split_qs2.R" else if (file.exists("../split_qs2.R")) "../split_qs2.R" else NULL
+if (!is.null(split_qs2_script)) {
+  source(split_qs2_script)
+  root_dir <- if (dir.exists("Angele_et_al_2022")) "." else ".."
+  check_and_combine_qs2(root_dir)
+}
+
 
 # Tidy an easystats estimate object for display: merge contrast levels into a
 # single "Contrast" column, drop ROPE columns, and combine the CI bounds into
