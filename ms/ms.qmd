@@ -146,67 +146,12 @@ library(easystats)
 library(ggplot2)
 library(ggdist)
 
-# Tidy an easystats estimate object for display: merge contrast levels into a
-# single "Contrast" column, drop ROPE columns, and combine the CI bounds into
-# a single "95% CrI" column.
-clean_estimate <- function(x, digits = 1) {
-  d <- as.data.frame(x)
-  # Use Greek symbols for the modelbased-assigned parameter columns.
-  greek <- c(Mu = "μ", Tau = "τ", Beta = "β", Sigma = "σ")
-  names(d)[names(d) %in% names(greek)] <- greek[names(d)[names(d) %in% names(greek)]]
-  d <- d[, !grepl("^ROPE|^CI$", names(d)), drop = FALSE]
-  # combine Level1/Level2 (contrast tables) into a single "Contrast" label
-  l1 <- names(d)[tolower(names(d)) == "level1"]
-  l2 <- names(d)[tolower(names(d)) == "level2"]
-  if (length(l1) && length(l2)) {
-    d[["Contrast"]] <- paste(d[[l1]], "-", d[[l2]])
-    d[[l1]] <- NULL
-    d[[l2]] <- NULL
-  }
-  if (all(c("CI_low", "CI_high") %in% names(d))) {
-    d[["95% CrI"]] <- paste0(
-      "[",
-      round(d$CI_low, digits),
-      ", ",
-      round(d$CI_high, digits),
-      "]"
-    )
-    d$CI_low <- NULL
-    d$CI_high <- NULL
-  }
-  num <- setdiff(names(d)[vapply(d, is.numeric, logical(1))], "pd")
-  d[num] <- lapply(d[num], round, digits)
-  if ("pd" %in% names(d)) {
-    d$pd <- round(d$pd, 3)
-  }
-  # order: Contrast first, estimate next, then CrI and pd last
-  lead <- intersect("Contrast", names(d))
-  tail_cols <- intersect(c("95% CrI", "pd"), names(d))
-  d[, c(lead, setdiff(names(d), c(lead, tail_cols)), tail_cols), drop = FALSE]
-}
-
-# Shared formatting helpers, reused when building the condensed tables that
-# combine two parameters (e.g. E(RT) and beta, or mu and tau) side by side.
+# Shared formatting helpers, reused when building the condensed (long-format)
+# tables: one row per condition/effect x parameter, with Greek symbols (μ, τ,
+# β) as values in a "Parameter" column rather than as column headers.
 fmt_num <- function(x, digits = 1) formatC(round(x, digits), format = "f", digits = digits)
 fmt_ci <- function(low, high, digits = 1) paste0("[", fmt_num(low, digits), ", ", fmt_num(high, digits), "]")
 fmt_pd <- function(x, digits = 3) formatC(round(x, digits), format = "f", digits = digits)
-
-# Display-only: swaps "Mu"/"Tau" for Greek symbols in column headers just
-# before printing, so in-text get_val() lookups (by "Mu"/"Tau") stay untouched.
-# (Avoids \\b word-boundary regex, which this R build does not support correctly.)
-greek_names <- function(df) {
-  n <- names(df)
-  n[n == "Mu"] <- "μ"
-  n[n == "Tau"] <- "τ"
-  n <- sub("^Mu ", "μ ", n)
-  n <- sub("^Tau ", "τ ", n)
-  n <- sub(" Mu$", " μ", n)
-  n <- sub(" Tau$", " τ", n)
-  n <- gsub(" Mu ", " μ ", n, fixed = TRUE)
-  n <- gsub(" Tau ", " τ ", n, fixed = TRUE)
-  names(df) <- n
-  df
-}
 ```
 
 ```{r}
@@ -601,16 +546,26 @@ Although the resulting object is called `tau_estimates_default` for interpretive
 default_means_mu   <- as.data.frame(overall_means)
 default_means_beta <- as.data.frame(tau_estimates_default)
 
-default_means_tbl <- data.frame(
-  Blur = default_means_mu$Blur,
-  `E(RT)` = fmt_num(default_means_mu$Mu),
-  `E(RT) 95% CrI` = fmt_ci(default_means_mu$CI_low, default_means_mu$CI_high),
-  `E(RT) pd` = fmt_pd(default_means_mu$pd),
-  Beta = fmt_num(default_means_beta$Beta),
-  `Beta 95% CrI` = fmt_ci(default_means_beta$CI_low, default_means_beta$CI_high),
-  `Beta pd` = fmt_pd(default_means_beta$pd),
-  check.names = FALSE
+default_means_tbl <- rbind(
+  data.frame(
+    Blur = default_means_mu$Blur,
+    Parameter = "E(RT)",
+    Mean = fmt_num(default_means_mu$Mu),
+    `95% CrI` = fmt_ci(default_means_mu$CI_low, default_means_mu$CI_high),
+    pd = fmt_pd(default_means_mu$pd),
+    check.names = FALSE
+  ),
+  data.frame(
+    Blur = default_means_beta$Blur,
+    Parameter = "β",
+    Mean = fmt_num(default_means_beta$Beta),
+    `95% CrI` = fmt_ci(default_means_beta$CI_low, default_means_beta$CI_high),
+    pd = fmt_pd(default_means_beta$pd),
+    check.names = FALSE
+  )
 )
+default_means_tbl <- default_means_tbl[order(default_means_tbl$Blur), ]
+rownames(default_means_tbl) <- NULL
 ```
 
 ```{r}
@@ -644,15 +599,23 @@ tau_difference_default <- estimate_contrasts(
 default_contrast_mu   <- as.data.frame(overall_difference)
 default_contrast_beta <- as.data.frame(tau_difference_default)
 
-default_contrast_tbl <- data.frame(
-  Contrast = paste(default_contrast_mu$Level1, "-", default_contrast_mu$Level2),
-  `E(RT)` = fmt_num(default_contrast_mu$Mean),
-  `E(RT) 95% CrI` = fmt_ci(default_contrast_mu$CI_low, default_contrast_mu$CI_high),
-  `E(RT) pd` = fmt_pd(default_contrast_mu$pd),
-  Beta = fmt_num(default_contrast_beta$Mean),
-  `Beta 95% CrI` = fmt_ci(default_contrast_beta$CI_low, default_contrast_beta$CI_high),
-  `Beta pd` = fmt_pd(default_contrast_beta$pd),
-  check.names = FALSE
+default_contrast_tbl <- rbind(
+  data.frame(
+    Contrast = paste(default_contrast_mu$Level1, "-", default_contrast_mu$Level2),
+    Parameter = "E(RT)",
+    Estimate = fmt_num(default_contrast_mu$Mean),
+    `95% CrI` = fmt_ci(default_contrast_mu$CI_low, default_contrast_mu$CI_high),
+    pd = fmt_pd(default_contrast_mu$pd),
+    check.names = FALSE
+  ),
+  data.frame(
+    Contrast = paste(default_contrast_beta$Level1, "-", default_contrast_beta$Level2),
+    Parameter = "β",
+    Estimate = fmt_num(default_contrast_beta$Mean),
+    `95% CrI` = fmt_ci(default_contrast_beta$CI_low, default_contrast_beta$CI_high),
+    pd = fmt_pd(default_contrast_beta$pd),
+    check.names = FALSE
+  )
 )
 ```
 
@@ -799,19 +762,29 @@ tau_estimates <- estimate_means(
 classical_means_mu  <- as.data.frame(mu_estimates)
 classical_means_tau <- as.data.frame(tau_estimates)
 
-classical_means_tbl <- data.frame(
-  Blur = classical_means_mu$Blur,
-  Mu = fmt_num(classical_means_mu$Mu),
-  `Mu 95% CrI` = fmt_ci(classical_means_mu$CI_low, classical_means_mu$CI_high),
-  `Mu pd` = fmt_pd(classical_means_mu$pd),
+classical_means_tbl <- rbind(
+  data.frame(
+    Blur = classical_means_mu$Blur,
+    Parameter = "μ",
+    Mean = fmt_num(classical_means_mu$Mu),
+    `95% CrI` = fmt_ci(classical_means_mu$CI_low, classical_means_mu$CI_high),
+    pd = fmt_pd(classical_means_mu$pd),
+    check.names = FALSE
+  ),
   # estimate_means(predict = "tau") names the estimate column "Mean", not
   # "Tau" (unlike "mu"/"beta", which do get their own name), with this
   # model's default marginaleffects backend.
-  Tau = fmt_num(classical_means_tau$Mean),
-  `Tau 95% CrI` = fmt_ci(classical_means_tau$CI_low, classical_means_tau$CI_high),
-  `Tau pd` = fmt_pd(classical_means_tau$pd),
-  check.names = FALSE
+  data.frame(
+    Blur = classical_means_tau$Blur,
+    Parameter = "τ",
+    Mean = fmt_num(classical_means_tau$Mean),
+    `95% CrI` = fmt_ci(classical_means_tau$CI_low, classical_means_tau$CI_high),
+    pd = fmt_pd(classical_means_tau$pd),
+    check.names = FALSE
+  )
 )
+classical_means_tbl <- classical_means_tbl[order(classical_means_tbl$Blur), ]
+rownames(classical_means_tbl) <- NULL
 ```
 
 ```{r}
@@ -819,7 +792,7 @@ classical_means_tbl <- data.frame(
 #| tbl-cap: "Estimated Gaussian-location ($\\mu$) and exponential ($\\tau$) parameters, by condition, from the classical model."
 #| echo: false
 #| results: asis
-tt(greek_names(classical_means_tbl))
+tt(classical_means_tbl)
 ```
 
 The estimates should be close to 100 ms for Clear and 50 ms for Low-Blur for $\tau$.
@@ -845,15 +818,23 @@ tau_difference <- estimate_contrasts(
 classical_contrast_mu  <- as.data.frame(mu_difference)
 classical_contrast_tau <- as.data.frame(tau_difference)
 
-classical_contrast_tbl <- data.frame(
-  Contrast = paste(classical_contrast_mu$Level1, "-", classical_contrast_mu$Level2),
-  Mu = fmt_num(classical_contrast_mu$Mean),
-  `Mu 95% CrI` = fmt_ci(classical_contrast_mu$CI_low, classical_contrast_mu$CI_high),
-  `Mu pd` = fmt_pd(classical_contrast_mu$pd),
-  Tau = fmt_num(classical_contrast_tau$Mean),
-  `Tau 95% CrI` = fmt_ci(classical_contrast_tau$CI_low, classical_contrast_tau$CI_high),
-  `Tau pd` = fmt_pd(classical_contrast_tau$pd),
-  check.names = FALSE
+classical_contrast_tbl <- rbind(
+  data.frame(
+    Contrast = paste(classical_contrast_mu$Level1, "-", classical_contrast_mu$Level2),
+    Parameter = "μ",
+    Estimate = fmt_num(classical_contrast_mu$Mean),
+    `95% CrI` = fmt_ci(classical_contrast_mu$CI_low, classical_contrast_mu$CI_high),
+    pd = fmt_pd(classical_contrast_mu$pd),
+    check.names = FALSE
+  ),
+  data.frame(
+    Contrast = paste(classical_contrast_tau$Level1, "-", classical_contrast_tau$Level2),
+    Parameter = "τ",
+    Estimate = fmt_num(classical_contrast_tau$Mean),
+    `95% CrI` = fmt_ci(classical_contrast_tau$CI_low, classical_contrast_tau$CI_high),
+    pd = fmt_pd(classical_contrast_tau$pd),
+    check.names = FALSE
+  )
 )
 ```
 
@@ -862,7 +843,7 @@ classical_contrast_tbl <- data.frame(
 #| tbl-cap: "Blur contrast in the Gaussian-location ($\\mu$) and exponential ($\\tau$) parameters, from the classical model."
 #| echo: false
 #| results: asis
-tt(greek_names(classical_contrast_tbl))
+tt(classical_contrast_tbl)
 ```
 
 The results seen in @tbl-classical-contrast are very similar to the default paramaterization for $\tau$, but unlike the default model, the classical model's $\mu$ contrast directly recovers the simulated 50-ms shift in the Gaussian location.
@@ -1031,15 +1012,28 @@ flip_contrast <- function(x) {
 real_means_mu  <- as.data.frame(estimate_means(fit_exp1_classical, by = c("Condition", "PrimeDuration"), predict = "mu",  centrality = "mean", backend = "emmeans"))
 real_means_tau <- as.data.frame(estimate_means(fit_exp1_classical, by = c("Condition", "PrimeDuration"), predict = "tau", centrality = "mean", backend = "emmeans"))
 
-real_means_tbl <- data.frame(
-  Condition = real_means_mu$Condition,
-  PrimeDuration = real_means_mu$PrimeDuration,
-  Mu = fmt_num(real_means_mu$Mu),
-  `Mu 95% CrI` = fmt_ci(real_means_mu$CI_low, real_means_mu$CI_high),
-  Tau = fmt_num(real_means_tau$Tau),
-  `Tau 95% CrI` = fmt_ci(real_means_tau$CI_low, real_means_tau$CI_high),
-  check.names = FALSE
+real_means_tbl <- rbind(
+  data.frame(
+    Condition = real_means_mu$Condition,
+    PrimeDuration = real_means_mu$PrimeDuration,
+    Parameter = "μ",
+    Mean = fmt_num(real_means_mu$Mu),
+    `95% CrI` = fmt_ci(real_means_mu$CI_low, real_means_mu$CI_high),
+    pd = fmt_pd(real_means_mu$pd),
+    check.names = FALSE
+  ),
+  data.frame(
+    Condition = real_means_tau$Condition,
+    PrimeDuration = real_means_tau$PrimeDuration,
+    Parameter = "τ",
+    Mean = fmt_num(real_means_tau$Tau),
+    `95% CrI` = fmt_ci(real_means_tau$CI_low, real_means_tau$CI_high),
+    pd = fmt_pd(real_means_tau$pd),
+    check.names = FALSE
+  )
 )
+real_means_tbl <- real_means_tbl[order(real_means_tbl$Condition, real_means_tbl$PrimeDuration), ]
+rownames(real_means_tbl) <- NULL
 ```
 
 ```{r}
@@ -1047,7 +1041,7 @@ real_means_tbl <- data.frame(
 #| tbl-cap: "Estimated Gaussian-location ($\\mu$) and exponential ($\\tau$) parameters by condition and prime duration for Experiment 1 from @angele2023 under the classical model."
 #| echo: false
 #| results: asis
-tt(greek_names(real_means_tbl))
+tt(real_means_tbl)
 ```
 
 @tbl-real-means displays the estimated posterior means for $\mu$ and $\tau$ across priming conditions and exposure durations. @tbl-real-contrasts below presents the model's population-level effects (main effect of relatedness, main effect of prime duration, and their interaction) alongside simple priming contrasts (Unrelated minus Identical) at each prime duration, for both parameters side by side.
@@ -1127,6 +1121,34 @@ real_contrasts_tbl <- data.frame(
 # Named lookup so in-text numbers are always pulled from the table above
 # rather than typed by hand.
 get_val <- function(effect, col) real_contrasts_tbl[real_contrasts_tbl$Effect == effect, col]
+
+# Display-only: long format (one row per Effect x Parameter) instead of Mu/Tau
+# side by side. get_val() above still reads the wide table, so in-text prose
+# is unaffected.
+real_contrasts_display <- rbind(
+  data.frame(
+    Effect = real_contrasts_tbl$Effect,
+    `Default brms E(RT)` = real_contrasts_tbl$`Default brms E(RT)`,
+    Parameter = "μ",
+    Estimate = real_contrasts_tbl$Mu,
+    `95% CrI` = real_contrasts_tbl$`Mu 95% CrI`,
+    pd = real_contrasts_tbl$`Mu pd`,
+    check.names = FALSE
+  ),
+  data.frame(
+    Effect = real_contrasts_tbl$Effect,
+    `Default brms E(RT)` = real_contrasts_tbl$`Default brms E(RT)`,
+    Parameter = "τ",
+    Estimate = real_contrasts_tbl$Tau,
+    `95% CrI` = real_contrasts_tbl$`Tau 95% CrI`,
+    pd = real_contrasts_tbl$`Tau pd`,
+    check.names = FALSE
+  )
+)
+real_contrasts_display$Effect <- factor(real_contrasts_display$Effect, levels = real_contrasts_tbl$Effect)
+real_contrasts_display <- real_contrasts_display[order(real_contrasts_display$Effect), ]
+real_contrasts_display$Effect <- as.character(real_contrasts_display$Effect)
+rownames(real_contrasts_display) <- NULL
 ```
 
 ```{r}
@@ -1134,7 +1156,7 @@ get_val <- function(effect, col) real_contrasts_tbl[real_contrasts_tbl$Effect ==
 #| tbl-cap: "Fixed effects and priming contrasts in the Gaussian-location ($\\mu$) and exponential ($\\tau$) parameters for Experiment 1 from @angele2023 under the classical model, alongside the default-brms E(RT) effects as originally reported by @angele2023. All estimates are in milliseconds and reflect Unrelated minus Identical (or 50 ms minus 33 ms) differences; pd is the probability of direction."
 #| echo: false
 #| results: asis
-tt(greek_names(real_contrasts_tbl))
+tt(real_contrasts_display)
 ```
 
 As shown in @tbl-real-contrasts, under the classical parameterization, the true Gaussian location $\mu$ shows a robust overall main effect of relatedness (`r get_val("Main Effect of Relatedness", "Mu")` ms, 95% CrI `r get_val("Main Effect of Relatedness", "Mu 95% CrI")`). Crucially, the main effect of prime duration on $\mu$ is **non-credible** (`r get_val("Main Effect of Prime Duration", "Mu")` ms, 95% CrI `r get_val("Main Effect of Prime Duration", "Mu 95% CrI")`, with the 95% CrI containing zero), in contrast to the location shift reported under the default parameterization. The model also reveals a credible interaction between relatedness and prime duration (`r get_val("Relatedness x Prime Duration Interaction", "Mu")` ms, 95% CrI `r get_val("Relatedness x Prime Duration Interaction", "Mu 95% CrI")`), indicating that the priming effect on $\mu$ was larger at 50 ms (`r get_val("Priming Effect at 50 ms", "Mu")` ms, 95% CrI `r get_val("Priming Effect at 50 ms", "Mu 95% CrI")`) than at 33 ms (`r get_val("Priming Effect at 33 ms", "Mu")` ms, 95% CrI `r get_val("Priming Effect at 33 ms", "Mu 95% CrI")`).
