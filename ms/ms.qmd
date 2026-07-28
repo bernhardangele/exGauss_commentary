@@ -116,7 +116,6 @@ format:
 
 Over the past two decades, psychology has seen a substantial rise in the application of Bayesian data analysis methods as a supplement to widely used frequentist methods [@pfadt2025methodological]. This shift has been driven by the increasing availability of computational tools that have made fitting Bayesian models both practical and efficient. Programming languages like R [@R], Python [@python], and Julia [@julia] provide libraries and packages that allow researchers to fit Bayesian models with little technical overhead. In addition, growing dissatisfaction with the null ritual and its associated pitfalls (e.g., p-value misinterpretation and dichotomous thinking) [@gigerenzer2018statistical], together with growing distrust of published findings [@vazire2018], has pushed many researchers toward statistical alternatives.
 
-
 One domain that has seen increased adoption of Bayesian methods is experimental psychology, where one of the most common dependent variables is response times (RT), which is a measure of how long it takes a person to initiate some type of response in the presense of a stimulus (i.e., motor, written, or spoken). RT data offers a window into cognitive processes undelying behavior [@baayen2010analyzing]. Traditionally, RT data have been analyzed using summary statistics such as the mean or median. However, RT distributions are typically positively skewed, bounded at zero, and characterized by substantial variability both within and between individuals [@wilcox; @whelan2008]. Moreover, experimental manipulations may affect not only the central tendency of the distribution but also its variability or upper tail. Consequently, analyses based solely on the mean or median can obscure theoretically meaningful distributional effects, motivating calls to move beyond mean-based analyses of RT data [@balota2011].
 
 One way to move beyond the mean is to model the full shape of the RT distribution. Mathematical models provide a flexible way to do so, allowing researchers to draw inferences about the psychological processes—such as memory, attention, and language—that give rise to observed response times. One model that has become especially popular for this purpose is the ex-Gaussian model [@ratcliff1976]. The ex-Gaussian distribution is formed by the convolution of a Gaussian distribution and an exponential distribution and is characterized by three parameters: $\mu$, $\sigma$, and $\tau$. The parameter $\mu$ represents the mean of the Gaussian component, whereas $\sigma$ represents its standard deviation. The $\tau$ parameter represents both the mean and standard deviation of the exponential component and primarily governs the length of the distribution’s positively skewed upper tail. The overall mean of the ex-Gaussian distribution is $\mu$ + $\tau$ , and the standard deviation (SD) is $\sqrt{\sigma^2+\tau^2}$ . Although these parameters have been used to infer cognitive processes such as automaticity [@dewitt2018; @balota2008] and cognitive control/inhibition [@kane2003], these interpretations are not inherent to the parameters and should be made cautiously [@matzke2009]. Nevertheless, the ex-Gaussian model can provide a more complete description of RT data than the arithmetic mean alone, which can be disproportionately influenced by the positively skewed tail of the distribution.
@@ -131,7 +130,6 @@ In this commentary, we demonstrate what the default parameterization of the ex-G
 ## Simulation Example
 
 To demonstrate the issue with fitting the default ex-Gaussian model in {brms}, we simulate data using a comparison adapted from one of our own studies [@geller2025] in R [version 4.6.0, @R]. In @geller2025, we examined how perceptual disfluency—manipulated by varying the level of blur applied to letter strings influenced reaction times in a lexical decision task (i.e., is this letter string a word?), and whether these effects were related to how well someone remembers the words in a reconition memory task. In that study, low blur words affected early stages of encoding, reflected in the Gaussian location parameter $\mu$, but not the later, tail component captured by $\tau$. For the present illustration, however, we construct a sharper scenario in which $\mu$ and $\tau$ differ in opposite directions so that the two conditions share the same expected reaction time. Using the classical ex-Gaussian parameterization implemented in the {cogmod} package [@makowski2026cogmod], we simulate ex-Gaussian data for clearly presented and low-blur words in which $\mu$ is set to 500 ms and 550 ms, $\tau$ to 100 ms and 50 ms, and $\sigma$ to 60 ms in both conditions (see @tbl-exgauss).
-
 
 ```{r}
 #| label: load-packages
@@ -149,9 +147,15 @@ library(ggdist)
 # Shared formatting helpers, reused when building the condensed (long-format)
 # tables: one row per condition/effect x parameter, with Greek symbols (μ, τ,
 # β) as values in a "Parameter" column rather than as column headers.
-fmt_num <- function(x, digits = 1) formatC(round(x, digits), format = "f", digits = digits)
-fmt_ci <- function(low, high, digits = 1) paste0("[", fmt_num(low, digits), ", ", fmt_num(high, digits), "]")
-fmt_pd <- function(x, digits = 3) formatC(round(x, digits), format = "f", digits = digits)
+fmt_num <- function(x, digits = 1) {
+  formatC(round(x, digits), format = "f", digits = digits)
+}
+fmt_ci <- function(low, high, digits = 1) {
+  paste0("[", fmt_num(low, digits), ", ", fmt_num(high, digits), "]")
+}
+fmt_pd <- function(x, digits = 3) {
+  formatC(round(x, digits), format = "f", digits = digits)
+}
 ```
 
 ```{r}
@@ -160,11 +164,10 @@ fmt_pd <- function(x, digits = 3) formatC(round(x, digits), format = "f", digits
 #| lst-cap: "Installing and loading the {cogmod} package from GitHub."
 
 # install from Github
-# remotes::install_github("DominiqueMakowski/cogmod")
+#remotes::install_github("DominiqueMakowski/cogmod")
 
 library(cogmod)
 ```
-
 
 ```{r}
 #| label: tbl-exgauss
@@ -543,7 +546,7 @@ Although the resulting object is called `tau_estimates_default` for interpretive
 ```{r}
 #| label: build-tbl-default-means
 #| echo: false
-default_means_mu   <- as.data.frame(overall_means)
+default_means_mu <- as.data.frame(overall_means)
 default_means_beta <- as.data.frame(tau_estimates_default)
 
 default_means_tbl <- rbind(
@@ -596,12 +599,16 @@ tau_difference_default <- estimate_contrasts(
 ```{r}
 #| label: build-tbl-default-contrast
 #| echo: false
-default_contrast_mu   <- as.data.frame(overall_difference)
+default_contrast_mu <- as.data.frame(overall_difference)
 default_contrast_beta <- as.data.frame(tau_difference_default)
 
 default_contrast_tbl <- rbind(
   data.frame(
-    Contrast = paste(default_contrast_mu$Level1, "-", default_contrast_mu$Level2),
+    Contrast = paste(
+      default_contrast_mu$Level1,
+      "-",
+      default_contrast_mu$Level2
+    ),
     Parameter = "E(RT)",
     Estimate = fmt_num(default_contrast_mu$Mean),
     `95% CrI` = fmt_ci(default_contrast_mu$CI_low, default_contrast_mu$CI_high),
@@ -609,10 +616,17 @@ default_contrast_tbl <- rbind(
     check.names = FALSE
   ),
   data.frame(
-    Contrast = paste(default_contrast_beta$Level1, "-", default_contrast_beta$Level2),
+    Contrast = paste(
+      default_contrast_beta$Level1,
+      "-",
+      default_contrast_beta$Level2
+    ),
     Parameter = "β",
     Estimate = fmt_num(default_contrast_beta$Mean),
-    `95% CrI` = fmt_ci(default_contrast_beta$CI_low, default_contrast_beta$CI_high),
+    `95% CrI` = fmt_ci(
+      default_contrast_beta$CI_low,
+      default_contrast_beta$CI_high
+    ),
     pd = fmt_pd(default_contrast_beta$pd),
     check.names = FALSE
   )
@@ -759,7 +773,7 @@ tau_estimates <- estimate_means(
 ```{r}
 #| label: build-tbl-classical-means
 #| echo: false
-classical_means_mu  <- as.data.frame(mu_estimates)
+classical_means_mu <- as.data.frame(mu_estimates)
 classical_means_tau <- as.data.frame(tau_estimates)
 
 classical_means_tbl <- rbind(
@@ -815,23 +829,37 @@ tau_difference <- estimate_contrasts(
 ```{r}
 #| label: build-tbl-classical-contrast
 #| echo: false
-classical_contrast_mu  <- as.data.frame(mu_difference)
+classical_contrast_mu <- as.data.frame(mu_difference)
 classical_contrast_tau <- as.data.frame(tau_difference)
 
 classical_contrast_tbl <- rbind(
   data.frame(
-    Contrast = paste(classical_contrast_mu$Level1, "-", classical_contrast_mu$Level2),
+    Contrast = paste(
+      classical_contrast_mu$Level1,
+      "-",
+      classical_contrast_mu$Level2
+    ),
     Parameter = "μ",
-    Estimate = fmt_num(classical_contrast_mu$Mean),
-    `95% CrI` = fmt_ci(classical_contrast_mu$CI_low, classical_contrast_mu$CI_high),
+    Mean = fmt_num(classical_contrast_mu$Mean),
+    `95% CrI` = fmt_ci(
+      classical_contrast_mu$CI_low,
+      classical_contrast_mu$CI_high
+    ),
     pd = fmt_pd(classical_contrast_mu$pd),
     check.names = FALSE
   ),
   data.frame(
-    Contrast = paste(classical_contrast_tau$Level1, "-", classical_contrast_tau$Level2),
+    Contrast = paste(
+      classical_contrast_tau$Level1,
+      "-",
+      classical_contrast_tau$Level2
+    ),
     Parameter = "τ",
-    Estimate = fmt_num(classical_contrast_tau$Mean),
-    `95% CrI` = fmt_ci(classical_contrast_tau$CI_low, classical_contrast_tau$CI_high),
+    Mean = fmt_num(classical_contrast_tau$Mean),
+    `95% CrI` = fmt_ci(
+      classical_contrast_tau$CI_low,
+      classical_contrast_tau$CI_high
+    ),
     pd = fmt_pd(classical_contrast_tau$pd),
     check.names = FALSE
   )
@@ -929,23 +957,23 @@ N_target <- length(unique(data_fit$Target))
 # Function generating stable initial values for all Stan parameters
 init_classical <- function() {
   list(
-    Intercept = 500,           # Gaussian location
-    Intercept_sigma = 60,      # Gaussian SD (response scale, softplus link)
-    Intercept_tau = 100,       # Exponential tail (response scale, softplus link)
-    b = rep(0, 3),             # Fixed effects on mu
-    b_tau = rep(0, 3),         # Fixed effects on tau
-    sd_1 = rep(30, 4),         # Participant SDs for mu (ms)
-    sd_2 = rep(30, 4),         # Item SDs for mu (ms)
-    sd_3 = rep(0.1, 4),        # Participant SDs for tau (small to prevent overflow)
-    sd_4 = rep(0.1, 4),        # Item SDs for tau (small to prevent overflow)
-    z_1 = matrix(0, nrow = 4, ncol = N_source),  # Participant random effects for mu
-    z_2 = matrix(0, nrow = 4, ncol = N_target),  # Item random effects for mu
-    z_3 = matrix(0, nrow = 4, ncol = N_source),  # Participant random effects for tau
-    z_4 = matrix(0, nrow = 4, ncol = N_target),  # Item random effects for tau
-    L_1 = diag(4),             # Cholesky factor for participant random effects (mu)
-    L_2 = diag(4),             # Cholesky factor for item random effects (mu)
-    L_3 = diag(4),             # Cholesky factor for participant random effects (tau)
-    L_4 = diag(4)              # Cholesky factor for item random effects (tau)
+    Intercept = 500, # Gaussian location
+    Intercept_sigma = 60, # Gaussian SD (response scale, softplus link)
+    Intercept_tau = 100, # Exponential tail (response scale, softplus link)
+    b = rep(0, 3), # Fixed effects on mu
+    b_tau = rep(0, 3), # Fixed effects on tau
+    sd_1 = rep(30, 4), # Participant SDs for mu (ms)
+    sd_2 = rep(30, 4), # Item SDs for mu (ms)
+    sd_3 = rep(0.1, 4), # Participant SDs for tau (small to prevent overflow)
+    sd_4 = rep(0.1, 4), # Item SDs for tau (small to prevent overflow)
+    z_1 = matrix(0, nrow = 4, ncol = N_source), # Participant random effects for mu
+    z_2 = matrix(0, nrow = 4, ncol = N_target), # Item random effects for mu
+    z_3 = matrix(0, nrow = 4, ncol = N_source), # Participant random effects for tau
+    z_4 = matrix(0, nrow = 4, ncol = N_target), # Item random effects for tau
+    L_1 = diag(4), # Cholesky factor for participant random effects (mu)
+    L_2 = diag(4), # Cholesky factor for item random effects (mu)
+    L_3 = diag(4), # Cholesky factor for participant random effects (tau)
+    L_4 = diag(4) # Cholesky factor for item random effects (tau)
   )
 }
 ```
@@ -959,8 +987,14 @@ The classical ex-Gaussian model for Experiment 1 is specified and fit as follows
 blmm_exp1_classical_rt <- brm(
   data = data_fit,
   formula = bf(
-    rt ~ Condition * PrimeDuration + (1 + Condition * PrimeDuration|source) + (1 + Condition * PrimeDuration|Target),
-    tau ~ Condition * PrimeDuration + (1 + Condition * PrimeDuration|source) + (1 + Condition * PrimeDuration|Target),
+    rt ~ Condition *
+      PrimeDuration +
+      (1 + Condition * PrimeDuration | source) +
+      (1 + Condition * PrimeDuration | Target),
+    tau ~ Condition *
+      PrimeDuration +
+      (1 + Condition * PrimeDuration | source) +
+      (1 + Condition * PrimeDuration | Target),
     sigma ~ 1
   ),
   warmup = 1000,
@@ -988,7 +1022,11 @@ As in the Simulation Example, we use `{modelbased}`'s `estimate_means()` and `es
 #| message: false
 #| warning: false
 
-exp1_rds_path <- here::here("ms", "Angele_et_al_2022", "blmm_exp1_classical_rt.rds")
+exp1_rds_path <- here::here(
+  "ms",
+  "Angele_et_al_2022",
+  "blmm_exp1_classical_rt.rds"
+)
 
 fit_exp1_classical <- readRDS(exp1_rds_path)
 
@@ -1009,8 +1047,20 @@ flip_contrast <- function(x) {
 #| label: estimate-means-real
 #| echo: false
 
-real_means_mu  <- as.data.frame(estimate_means(fit_exp1_classical, by = c("Condition", "PrimeDuration"), predict = "mu",  centrality = "mean", backend = "emmeans"))
-real_means_tau <- as.data.frame(estimate_means(fit_exp1_classical, by = c("Condition", "PrimeDuration"), predict = "tau", centrality = "mean", backend = "emmeans"))
+real_means_mu <- as.data.frame(estimate_means(
+  fit_exp1_classical,
+  by = c("Condition", "PrimeDuration"),
+  predict = "mu",
+  centrality = "mean",
+  backend = "emmeans"
+))
+real_means_tau <- as.data.frame(estimate_means(
+  fit_exp1_classical,
+  by = c("Condition", "PrimeDuration"),
+  predict = "tau",
+  centrality = "mean",
+  backend = "emmeans"
+))
 
 real_means_tbl <- rbind(
   data.frame(
@@ -1032,7 +1082,9 @@ real_means_tbl <- rbind(
     check.names = FALSE
   )
 )
-real_means_tbl <- real_means_tbl[order(real_means_tbl$Condition, real_means_tbl$PrimeDuration), ]
+real_means_tbl <- real_means_tbl[
+  order(real_means_tbl$Condition, real_means_tbl$PrimeDuration),
+]
 rownames(real_means_tbl) <- NULL
 ```
 
@@ -1050,18 +1102,62 @@ tt(real_means_tbl)
 #| label: estimate-contrasts-real
 #| echo: false
 
-mu_main_cond <- flip_contrast(estimate_contrasts(fit_exp1_classical, contrast = "Condition", predict = "mu", centrality = "mean", backend = "emmeans"))
-mu_main_dur  <- flip_contrast(estimate_contrasts(fit_exp1_classical, contrast = "PrimeDuration", predict = "mu", centrality = "mean", backend = "emmeans"))
-mu_simple    <- flip_contrast(estimate_contrasts(fit_exp1_classical, contrast = "Condition", by = "PrimeDuration", predict = "mu", centrality = "mean", backend = "emmeans"))
+mu_main_cond <- flip_contrast(estimate_contrasts(
+  fit_exp1_classical,
+  contrast = "Condition",
+  predict = "mu",
+  centrality = "mean",
+  backend = "emmeans"
+))
+mu_main_dur <- flip_contrast(estimate_contrasts(
+  fit_exp1_classical,
+  contrast = "PrimeDuration",
+  predict = "mu",
+  centrality = "mean",
+  backend = "emmeans"
+))
+mu_simple <- flip_contrast(estimate_contrasts(
+  fit_exp1_classical,
+  contrast = "Condition",
+  by = "PrimeDuration",
+  predict = "mu",
+  centrality = "mean",
+  backend = "emmeans"
+))
 
-tau_main_cond <- flip_contrast(estimate_contrasts(fit_exp1_classical, contrast = "Condition", predict = "tau", centrality = "mean", backend = "emmeans"))
-tau_main_dur  <- flip_contrast(estimate_contrasts(fit_exp1_classical, contrast = "PrimeDuration", predict = "tau", centrality = "mean", backend = "emmeans"))
-tau_simple    <- flip_contrast(estimate_contrasts(fit_exp1_classical, contrast = "Condition", by = "PrimeDuration", predict = "tau", centrality = "mean", backend = "emmeans"))
+tau_main_cond <- flip_contrast(estimate_contrasts(
+  fit_exp1_classical,
+  contrast = "Condition",
+  predict = "tau",
+  centrality = "mean",
+  backend = "emmeans"
+))
+tau_main_dur <- flip_contrast(estimate_contrasts(
+  fit_exp1_classical,
+  contrast = "PrimeDuration",
+  predict = "tau",
+  centrality = "mean",
+  backend = "emmeans"
+))
+tau_simple <- flip_contrast(estimate_contrasts(
+  fit_exp1_classical,
+  contrast = "Condition",
+  by = "PrimeDuration",
+  predict = "tau",
+  centrality = "mean",
+  backend = "emmeans"
+))
 
 # mu is estimated on the identity scale, so the raw population-level
 # interaction coefficient already is the response-scale (ms) interaction.
-fixed_effects_real <- as.data.frame(parameters::model_parameters(fit_exp1_classical, effects = "fixed", centrality = "mean"))
-mu_intx <- fixed_effects_real[fixed_effects_real$Parameter == "b_Condition1:PrimeDuration1", ]
+fixed_effects_real <- as.data.frame(parameters::model_parameters(
+  fit_exp1_classical,
+  effects = "fixed",
+  centrality = "mean"
+))
+mu_intx <- fixed_effects_real[
+  fixed_effects_real$Parameter == "b_Condition1:PrimeDuration1",
+]
 
 # tau uses a nonlinear link, so its response-scale (ms) interaction is not
 # the raw (log-scale) regression coefficient. estimate_contrasts() has no
@@ -1078,9 +1174,14 @@ tau_means_draws <- as.data.frame(estimate_means(
 ))
 iter_cols <- grep("^iter_", names(tau_means_draws), value = TRUE)
 get_draws <- function(condition, duration) {
-  as.numeric(tau_means_draws[tau_means_draws$Condition == condition & tau_means_draws$PrimeDuration == duration, iter_cols])
+  as.numeric(tau_means_draws[
+    tau_means_draws$Condition == condition &
+      tau_means_draws$PrimeDuration == duration,
+    iter_cols
+  ])
 }
-tau_intx_draws <- (get_draws("Unrelated", "50 ms") - get_draws("Identical", "50 ms")) -
+tau_intx_draws <- (get_draws("Unrelated", "50 ms") -
+  get_draws("Identical", "50 ms")) -
   (get_draws("Unrelated", "33 ms") - get_draws("Identical", "33 ms"))
 tau_intx <- data.frame(
   Mean = mean(tau_intx_draws),
@@ -1093,7 +1194,13 @@ tau_intx <- data.frame(
 
 # Effects as originally reported by @angele2023 under their default-brms
 # E(RT) parameterization (their Table 3); we did not refit their default model.
-default_ert <- c("31.5 [27.7, 35.3]", "-10.9 [-14.5, -7.3]", "19.3 [12.6, 26.0]", "~22.0", "~41.0")
+default_ert <- c(
+  "31.5 [27.7, 35.3]",
+  "-10.9 [-14.5, -7.3]",
+  "19.3 [12.6, 26.0]",
+  "~22.0",
+  "~41.0"
+)
 
 real_contrasts_tbl <- data.frame(
   Effect = c(
@@ -1103,24 +1210,66 @@ real_contrasts_tbl <- data.frame(
     paste("Priming Effect at", mu_simple$PrimeDuration)
   ),
   `Default brms E(RT)` = default_ert,
-  Mu = fmt_num(c(mu_main_cond$Difference, mu_main_dur$Difference, mu_intx$Mean, mu_simple$Difference)),
+  Mu = fmt_num(c(
+    mu_main_cond$Difference,
+    mu_main_dur$Difference,
+    mu_intx$Mean,
+    mu_simple$Difference
+  )),
   `Mu 95% CrI` = fmt_ci(
-    c(mu_main_cond$CI_low, mu_main_dur$CI_low, mu_intx$CI_low, mu_simple$CI_low),
-    c(mu_main_cond$CI_high, mu_main_dur$CI_high, mu_intx$CI_high, mu_simple$CI_high)
+    c(
+      mu_main_cond$CI_low,
+      mu_main_dur$CI_low,
+      mu_intx$CI_low,
+      mu_simple$CI_low
+    ),
+    c(
+      mu_main_cond$CI_high,
+      mu_main_dur$CI_high,
+      mu_intx$CI_high,
+      mu_simple$CI_high
+    )
   ),
-  `Mu pd` = fmt_pd(c(mu_main_cond$pd, mu_main_dur$pd, mu_intx$pd, mu_simple$pd)),
-  Tau = fmt_num(c(tau_main_cond$Difference, tau_main_dur$Difference, tau_intx$Mean, tau_simple$Difference)),
+  `Mu pd` = fmt_pd(c(
+    mu_main_cond$pd,
+    mu_main_dur$pd,
+    mu_intx$pd,
+    mu_simple$pd
+  )),
+  Tau = fmt_num(c(
+    tau_main_cond$Difference,
+    tau_main_dur$Difference,
+    tau_intx$Mean,
+    tau_simple$Difference
+  )),
   `Tau 95% CrI` = fmt_ci(
-    c(tau_main_cond$CI_low, tau_main_dur$CI_low, tau_intx$CI_low, tau_simple$CI_low),
-    c(tau_main_cond$CI_high, tau_main_dur$CI_high, tau_intx$CI_high, tau_simple$CI_high)
+    c(
+      tau_main_cond$CI_low,
+      tau_main_dur$CI_low,
+      tau_intx$CI_low,
+      tau_simple$CI_low
+    ),
+    c(
+      tau_main_cond$CI_high,
+      tau_main_dur$CI_high,
+      tau_intx$CI_high,
+      tau_simple$CI_high
+    )
   ),
-  `Tau pd` = fmt_pd(c(tau_main_cond$pd, tau_main_dur$pd, tau_intx$pd, tau_simple$pd)),
+  `Tau pd` = fmt_pd(c(
+    tau_main_cond$pd,
+    tau_main_dur$pd,
+    tau_intx$pd,
+    tau_simple$pd
+  )),
   check.names = FALSE
 )
 
 # Named lookup so in-text numbers are always pulled from the table above
 # rather than typed by hand.
-get_val <- function(effect, col) real_contrasts_tbl[real_contrasts_tbl$Effect == effect, col]
+get_val <- function(effect, col) {
+  real_contrasts_tbl[real_contrasts_tbl$Effect == effect, col]
+}
 
 # Display-only: long format (one row per Effect x Parameter) instead of Mu/Tau
 # side by side. get_val() above still reads the wide table, so in-text prose
@@ -1145,8 +1294,13 @@ real_contrasts_display <- rbind(
     check.names = FALSE
   )
 )
-real_contrasts_display$Effect <- factor(real_contrasts_display$Effect, levels = real_contrasts_tbl$Effect)
-real_contrasts_display <- real_contrasts_display[order(real_contrasts_display$Effect), ]
+real_contrasts_display$Effect <- factor(
+  real_contrasts_display$Effect,
+  levels = real_contrasts_tbl$Effect
+)
+real_contrasts_display <- real_contrasts_display[
+  order(real_contrasts_display$Effect),
+]
 real_contrasts_display$Effect <- as.character(real_contrasts_display$Effect)
 rownames(real_contrasts_display) <- NULL
 ```
@@ -1167,13 +1321,13 @@ For the exponential component $\tau$, the main effect of relatedness is small an
 
 Comparing these classical ex-Gaussian estimates with those originally reported by @angele2023 (the "Default brms E(RT)" column of @tbl-real-contrasts) highlights the practical consequences of model parameterization for theoretical inferences.
 
-1. **Parameter Interpretation**: @angele2023 reported fixed effects for relatedness, prime duration, and their interaction from default {brms} under the assumption that `mu` represented the Gaussian location component $\mu_{\text{Gaussian}}$. In reality, `brms` default `mu` estimates $E(RT) = \mu_{\text{Gaussian}} + \tau$. Consequently, @angele2023 reported overall distributional mean differences under the label of Gaussian location shifts.
+1.  **Parameter Interpretation**: @angele2023 reported fixed effects for relatedness, prime duration, and their interaction from default {brms} under the assumption that `mu` represented the Gaussian location component $\mu_{\text{Gaussian}}$. In reality, `brms` default `mu` estimates $E(RT) = \mu_{\text{Gaussian}} + \tau$. Consequently, @angele2023 reported overall distributional mean differences under the label of Gaussian location shifts.
 
-2. **Divergent Conclusions on Prime Duration**: A critical theoretical discrepancy emerges regarding the main effect of prime duration. Based on their default {brms} model, @angele2023 concluded that increasing prime exposure duration from 33 ms to 50 ms produced a credible downward shift in the Gaussian location parameter $\mu$ ($b = -10.9$ ms, 95% CrI [-14.5, -7.3]). However, the classical parameterization reveals that the true main effect of prime duration on $\mu_{\text{Gaussian}}$ is **non-credible** (`r get_val("Main Effect of Prime Duration", "Mu")` ms, 95% CrI `r get_val("Main Effect of Prime Duration", "Mu 95% CrI")`, with the 95% CrI containing zero). Instead, the overall reduction in RTs at 50 ms prime duration was driven almost entirely by a compression of the exponential tail $\tau$ (`r get_val("Main Effect of Prime Duration", "Tau")` ms, 95% CrI `r get_val("Main Effect of Prime Duration", "Tau 95% CrI")`). Because default {brms} models $E(RT) = \mu_{\text{Gaussian}} + \tau$, the $-10.9$ ms effect reported by @angele2023 as a location shift was actually the composite sum of a non-credible $\mu$ shift (`r get_val("Main Effect of Prime Duration", "Mu")` ms) and a credible $\tau$ tail reduction (`r get_val("Main Effect of Prime Duration", "Tau")` ms).
+2.  **Divergent Conclusions on Prime Duration**: A critical theoretical discrepancy emerges regarding the main effect of prime duration. Based on their default {brms} model, @angele2023 concluded that increasing prime exposure duration from 33 ms to 50 ms produced a credible downward shift in the Gaussian location parameter $\mu$ ($b = -10.9$ ms, 95% CrI \[-14.5, -7.3\]). However, the classical parameterization reveals that the true main effect of prime duration on $\mu_{\text{Gaussian}}$ is **non-credible** (`r get_val("Main Effect of Prime Duration", "Mu")` ms, 95% CrI `r get_val("Main Effect of Prime Duration", "Mu 95% CrI")`, with the 95% CrI containing zero). Instead, the overall reduction in RTs at 50 ms prime duration was driven almost entirely by a compression of the exponential tail $\tau$ (`r get_val("Main Effect of Prime Duration", "Tau")` ms, 95% CrI `r get_val("Main Effect of Prime Duration", "Tau 95% CrI")`). Because default {brms} models $E(RT) = \mu_{\text{Gaussian}} + \tau$, the $-10.9$ ms effect reported by @angele2023 as a location shift was actually the composite sum of a non-credible $\mu$ shift (`r get_val("Main Effect of Prime Duration", "Mu")` ms) and a credible $\tau$ tail reduction (`r get_val("Main Effect of Prime Duration", "Tau")` ms).
 
-3. **Priming Effects and Interaction**: For the priming manipulation, the main effect of relatedness on $\mu_{\text{Gaussian}}$ (`r get_val("Main Effect of Relatedness", "Mu")` ms, 95% CrI `r get_val("Main Effect of Relatedness", "Mu 95% CrI")`) and the interaction (`r get_val("Relatedness x Prime Duration Interaction", "Mu")` ms, 95% CrI `r get_val("Relatedness x Prime Duration Interaction", "Mu 95% CrI")`) closely mirror the $E(RT)$ effects reported by @angele2023 (main effect $\sim 31.5$ ms, interaction $\sim 19.3$ ms). The estimates for the two parameterizations align closely for the priming effect because $\tau$ showed no credible priming differences (`r get_val("Main Effect of Relatedness", "Tau")` ms, 95% CrI `r get_val("Main Effect of Relatedness", "Tau 95% CrI")`). When $\Delta \tau \approx 0$, changes in the distributional mean $\Delta E(RT)$ track changes in the Gaussian location $\Delta \mu$ nearly 1-to-1.
+3.  **Priming Effects and Interaction**: For the priming manipulation, the main effect of relatedness on $\mu_{\text{Gaussian}}$ (`r get_val("Main Effect of Relatedness", "Mu")` ms, 95% CrI `r get_val("Main Effect of Relatedness", "Mu 95% CrI")`) and the interaction (`r get_val("Relatedness x Prime Duration Interaction", "Mu")` ms, 95% CrI `r get_val("Relatedness x Prime Duration Interaction", "Mu 95% CrI")`) closely mirror the $E(RT)$ effects reported by @angele2023 (main effect $\sim 31.5$ ms, interaction $\sim 19.3$ ms). The estimates for the two parameterizations align closely for the priming effect because $\tau$ showed no credible priming differences (`r get_val("Main Effect of Relatedness", "Tau")` ms, 95% CrI `r get_val("Main Effect of Relatedness", "Tau 95% CrI")`). When $\Delta \tau \approx 0$, changes in the distributional mean $\Delta E(RT)$ track changes in the Gaussian location $\Delta \mu$ nearly 1-to-1.
 
-4. **Methodological Takeaway**: This empirical comparison demonstrates that misinterpreting default {brms} parameters can lead to subtle misattributions regarding *which* distributional component is altered by an experimental manipulation. In @angele2023, a tail-shortening effect of prime duration ($\Delta \tau =$ `r get_val("Main Effect of Prime Duration", "Tau")` ms) was attributed to the Gaussian location parameter (`mu`). Adopting the classical parameterization resolves this misattribution and ensures that theoretical claims align with the underlying distributional parameters.
+4.  **Methodological Takeaway**: This empirical comparison demonstrates that misinterpreting default {brms} parameters can lead to subtle misattributions regarding *which* distributional component is altered by an experimental manipulation. In @angele2023, a tail-shortening effect of prime duration ($\Delta \tau =$ `r get_val("Main Effect of Prime Duration", "Tau")` ms) was attributed to the Gaussian location parameter (`mu`). Adopting the classical parameterization resolves this misattribution and ensures that theoretical claims align with the underlying distributional parameters.
 
 ## Conclusion
 
