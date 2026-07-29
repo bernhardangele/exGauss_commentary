@@ -650,6 +650,10 @@ As shown in @tbl-default-contrast, the default model correctly recovers a near-z
 
 As we have shown above, the default paramterization gives you the exected RT of the entire distribution. We can instead fit the model using the `rt_exgaussian()` family from the {cogmod} package, which implements the classical ex-Gaussian parameterization. In this model, $\mu$ represents the location of the Gaussian component and $\tau$ represents the mean of the exponential component.
 
+In {cogmod}, all three parameters use a softplus link by default, rather than the identity or log links {brms} typically applies. An identity link would let the linear predictor cross zero, which is invalid for all three parameters, since $\mu$ must stay positive to represent a genuine RT-scale location, and $\sigma$ and $\tau$ are positive by definition. A log link would also enforce positivity, but its curvature grows sharply away from zero, producing extreme gradients that make priors hard to calibrate. Softplus keeps the positivity constraint but behaves almost linearly away from zero, so priors can be specified directly on the response scale.
+
+At the sampling level, the log-likelihood is written in Stan and calls the built-in `exp_mod_normal_lpdf()` function^[<https://github.com/DominiqueMakowski/cogmod/blob/4b10ea5e00e02984d39c0749adf8dc0b9c4ab15b/R/rt_exgaussian_brms.R#L30-L37>], which implements the exponentially modified Gaussian density. That built-in function is parameterized by the rate of the exponential component rather than its mean, so $\tau$ is converted internally via $1/\tau$ before being passed in. The custom family simply relabels and re-links Stan's existing exponentially modified Gaussian implementation.
+
 ### Prior Specification
 
 The priors for the classical model follow the same reasoning as those for the default model, shown together in @tbl-priors:
