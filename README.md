@@ -7,7 +7,7 @@ The paper shows that the parameter labeled `mu` in the default `brms` ex-Gaussia
 family is *not* the Gaussian location parameter but the mean of the whole
 distribution, `E(RT) = μ + τ`. Using a simulated example, it demonstrates how this
 can mask a genuine effect on the Gaussian component, and shows how to fit a
-**classical** parameterization (via `brms.exgaussian`) that models the conventional
+**classical** parameterization (via `{cogmod}`) that models the conventional
 `μ`, `σ`, and `τ` directly.
 
 ## Repository structure
@@ -52,7 +52,7 @@ exGauss_commentary/
 - [Quarto](https://quarto.org) ≥ 1.4
 - R, with the following packages:
   - `brms` — Bayesian regression models
-  - `brms.exgaussian` — the classical ex-Gaussian family (`rexgaussian2()`, `exgaussian2()`, `exgaussian2_stancode()`)
+  - `cogmod` — the classical ex-Gaussian family (`rrt_exgaussian()`, `rt_exgaussian()`, `rt_exgaussian_stanvars()`)
   - `cmdstanr` + a working **CmdStan** install — the sampling backend
   - `easystats` (uses `modelbased`) — `estimate_means()` / `estimate_contrasts()`
   - `tinytable` — table formatting
@@ -72,7 +72,7 @@ Rendering fits two Stan models, so the first run takes a few minutes.
 Instead of installing Quarto, R, and every package by hand, this repo ships a
 `default.nix` (generated with the [`{rix}`](https://docs.ropensci.org/rix/) R package,
 see `create_env_dev.R`) that pins the exact versions of R, Quarto, TeX Live, CmdStan,
-and every R package (including `brms.exgaussian` and `cmdstanr` from their pinned
+and every R package (including `cogmod` and `cmdstanr` from their pinned
 GitHub commits) used to build this manuscript.
 
 **0. Install Nix** (skip if `nix --version` already works):

@@ -3,43 +3,64 @@ title: "This Is Not the ex-Gaussian Model You Are Looking For: On the Default Pa
 shorttitle: "Ex-Gaussian Parameterization in brms"
 author:
   - name: Jason Geller
-    email: drjasongeller@gmail.com
-    orcid: 0000-0002-7459-4505
-    url: https://www.drjasongeller.com
     corresponding: true
-    equal-contributor: true
-    affiliation:
-      - ref: 1
-affiliations:
-  - id: 1
-    name: Boston College
-    department: Department of Psychology and Neuroscience
+    orcid: 0000-0002-7459-4505
+    email: drjasongeller@gmail.com
+    affiliations:
+      - name: Boston College
+        department: Department of Psychology and Neuroscience
+        address: McGuinn 300
+        city: Chestnut Hill
+        region: MA
+        country: USA
+        postal-code: 02467
+    roles:
+      - Conceptualization
+      - Data curation
+      - Formal analysis
+      - Project administration
+      - Resources
+      - Visualization
+      - Writing - original draft
+  - name: Bernhard Angele
+    orcid: 0000-0001-8989-8555
+    affiliations:
+      - name: Nebrija University
+    roles:
+     - Formal analysis
+     - Validation
+     - Writing - original draft
+     - Writing - review & editing
+  - name: Dominique Makowski
+    affiliations:
+      - name: University of Sussex
+        department: School of Psychology
+        country: UK
+    roles:
+      - Formal analysis
+      - Validation
+      - Software
+      - Writing - review & editing
 abstract:
-    The ex-Gaussian distribution is a popular mathematical model for analyzing reaction-time
-    (RT) data because it separates the central portion of the distribution,
-    captured by the Gaussian parameters $\mu$ and $\sigma$, from the positively
-    skewed tail, captured by the exponential parameter $\tau$.Researchers often use these parameters to make inferences about underlying cognitive processes. As Bayesian methods
-    have become increasingly accessible, complex ex-Gaussian models can now be fit
-    with relative ease. In R, the {brms} package makes this especially
-    straightforward. However, it is important to recognize that the default
-    parameterization offered by {brms} does not map onto the classical
-    parameterization familiar to many researchers in the cognitive sciences. As a
-    result, some published studies may have drawn incorrect inferences from
-    effects estimated on the default $\mu$ parameter. In the default {brms} model,
-    $\mu$ indexes the mean of the full ex-Gaussian distribution rather than the
-    location of the Gaussian component alone. This distinction matters because
-    changes in the Gaussian location and changes in the exponential tail can
-    offset one another at the level of the overall mean. Using simulated data in
-    which blurred and clear words have Gaussian locations and exponential tail
-    shifts that move in opposite directions—holding the overall distributional
-    mean constant—I show that the default parameterization returns a null
-    effect on $\mu$, whereas the classical parameterization
-    recovers the true shift in the Gaussian component. I then demonstrate how to
-    fit the classical parameterization directly in {brms}. My hope is that this
-    commentary will help researchers and reviewers better understand the models
-    they are fitting, ensure that model parameters match their theoretical
-    questions, more accurately evaluate ex-Gaussian models reported in the
-    literature.
+  The ex-Gaussian distribution is a popular mathematical model for analyzing response time
+  (RT) data because it separates the central portion of the distribution,
+  captured by the Gaussian parameters $\mu$ and $\sigma$, from the positively
+  skewed tail, captured by the exponential parameter $\tau$. Researchers often use these
+  parameters to make inferences about underlying cognitive processes. As Bayesian methods
+  have become increasingly accessible, complex ex-Gaussian models can now be fit
+  with relative ease, and in R, the {brms} package makes this especially
+  straightforward. However, it is important to recognize that the default
+  parameterization offered by {brms} does not map onto the classical
+  parameterization familiar to many researchers in experimental psychology in the
+  default model, $\mu$ indexes the mean of the full ex-Gaussian distribution rather
+  than the location of the Gaussian component alone. This distinction matters
+  because changes in the Gaussian location and changes in the exponential tail
+  can offset one another at the level of the overall mean, so some published
+  studies may have drawn incorrect inferences from effects estimated on the
+  default $\mu$ parameter. Using simulated data and a published finding we highlight 
+  how using the default parameterization can lead to misleading inferences. We then demonstrate 
+  how to fit the classical parameterization directly using the {cogmod} package, with the aim of helping researchers 
+  and reviewers align ex-Gaussian model parameters with their theoretical questions.
 keywords:
   - ex-Gaussian
   - reaction time
@@ -48,6 +69,7 @@ keywords:
   - parameterization
 citeproc: true
 floatsintext: true
+wordcount: true
 author-note:
   disclosures:
     study-registration: "The analyses herein were not preregistered."
@@ -92,9 +114,9 @@ format:
     code-summary: "Show R code"
 ---
 
-Over the past two decades, psychology has seen a substantial increase in the application of Bayesian data analysis methods as a supplement to widely used frequentist methods [@pfadt2025methodological]. This shift has been driven by the increasing availability of computational tools that have made fitting Bayesian models both practical and efficient. Programming languages like R [@R], Python [@python], and Julia [@julia] provide libraries and packages that allow researchers to fit Bayesian models with little technical overhead. In addition, growing dissatisfaction with null-hypothesis significance testing (NHST) and its associated pitfalls (e.g., p-value misinterpretation and dichotomous thinking), together with the replication crisis/credibility revolution [@vazire2018], has pushed many researchers toward statistical alternatives.
+Over the past two decades, psychology has seen a substantial rise in the application of Bayesian data analysis methods as a supplement to widely used frequentist methods [@pfadt2025methodological]. This shift has been driven by the increasing availability of computational tools that have made fitting Bayesian models both practical and efficient. Programming languages like R [@R], Python [@python], and Julia [@julia] provide libraries and packages that allow researchers to fit Bayesian models with little technical overhead. In addition, growing dissatisfaction with the null ritual and its associated pitfalls (e.g., p-value misinterpretation and dichotomous thinking) [@gigerenzer2018statistical], together with growing distrust of published findings [@vazire2018], has pushed many researchers toward statistical alternatives.
 
-One domain that has seen an increase in the adoption of Bayesian methods is the analysis of response time (RT) data in cognitive sciences where RTs are routinely used as measures of processing speed, decision difficulty, and cognitive efficiency. Traditionally, RT data have often been analyzed using summary statistics such as the mean or median. However, RT distributions are typically positively skewed, bounded at zero, and characterized by substantial variability both within and between individuals [@wilcox]. Moreover, experimental manipulations may affect not only the central tendency of the distribution but also its variability or upper tail. Consequently, analyses based solely on the mean or median can obscure theoretically meaningful distributional effects, motivating calls to move beyond mean-based analyses of RT data [@balota2011].
+One domain that has seen increased adoption of Bayesian methods is experimental psychology, where one of the most common dependent variables is response times (RT), which is a measure of how long it takes a person to initiate some type of response in the presense of a stimulus (i.e., motor, written, or spoken). RT data offers a window into cognitive processes undelying behavior [@baayen2010analyzing]. Traditionally, RT data have been analyzed using summary statistics such as the mean or median. However, RT distributions are typically positively skewed, bounded at zero, and characterized by substantial variability both within and between individuals [@wilcox; @whelan2008]. Moreover, experimental manipulations may affect not only the central tendency of the distribution but also its variability or upper tail. Consequently, analyses based solely on the mean or median can obscure theoretically meaningful distributional effects, motivating calls to move beyond mean-based analyses of RT data [@balota2011].
 
 One way to move beyond the mean is to model the full shape of the RT distribution. Mathematical models provide a flexible way to do so, allowing researchers to draw inferences about the psychological processes—such as memory, attention, and language—that give rise to observed response times. One model that has become especially popular for this purpose is the ex-Gaussian model [@ratcliff1976]. The ex-Gaussian distribution is formed by the convolution of a Gaussian distribution and an exponential distribution and is characterized by three parameters: $\mu$, $\sigma$, and $\tau$. The parameter $\mu$ represents the mean of the Gaussian component, whereas $\sigma$ represents its standard deviation. The $\tau$ parameter represents both the mean and standard deviation of the exponential component and primarily governs the length of the distribution’s positively skewed upper tail. The overall mean of the ex-Gaussian distribution is $\mu$ + $\tau$ , and the standard deviation (SD) is $\sqrt{\sigma^2+\tau^2}$ . Although these parameters have been used to infer cognitive processes such as automaticity [@dewitt2018; @balota2008] and cognitive control/inhibition [@kane2003], these interpretations are not inherent to the parameters and should be made cautiously [@matzke2009]. Nevertheless, the ex-Gaussian model can provide a more complete description of RT data than the arithmetic mean alone, which can be disproportionately influenced by the positively skewed tail of the distribution.
 
@@ -103,11 +125,11 @@ The ex-Gaussian model can be fit within a Bayesian framework relatively easily u
 The central problem is that the parameter labeled $\mu$ in the default {brms} ex-Gaussian model does not correspond to the mean of the Gaussian component in the conventional parameterization. Instead, the quantity modeled as $\mu$ in {brms} represents the mean of the full ex-Gaussian distribution. Under the conventional parameterization, this quantity is equal to $\mu_{\mathrm{Gaussian}} + \tau$. Consequently, regression effects estimated for the default $\mu$ parameter reflect changes in a composite quantity that combines the Gaussian location and exponential tail components. Such effects therefore cannot be interpreted directly as changes in the Gaussian component or in typical response speed. To recover the conventional Gaussian mean, it is necessary to derive it from the model parameters as $\mu_{\mathrm{Gaussian}} =
 \mu_{\mathrm{brms}} - \tau$ or to specify an alternative parameterization that models the conventional ex-Gaussian parameters directly.
 
-In this commentary, we demonstrate what the default parameterization of the ex-Gaussian model in {brms} actually provides and then show how to specify the model so that its parameters correspond to the conventional ex-Gaussian parameters used in reaction-time research. The goal is to improve the accuracy and interpretability of inferences drawn from these models. This issue is particularly important because the ex-Gaussian distribution is widely used to distinguish changes in the central portion of the RT distribution from changes in its posietively skewed tail.
+In this commentary, we demonstrate what the default parameterization of the ex-Gaussian model in {brms} actually provides and then show how to specify the model so that its parameters correspond to the conventional ex-Gaussian parameters used in reaction-time research. The goal is to improve the accuracy and interpretability of inferences drawn from these models. This issue is particularly important because the ex-Gaussian distribution is widely used to distinguish changes in the central portion of the RT distribution from changes in its positively skewed tail.
 
 ## Simulation Example
 
-To demonstrate the issue with fitting the default ex-Gaussian model in {brms}, I simulate data using a comparison adapted from one of my own studies [@geller2025] in R [version 4.6.0; @R]. In @geller2025, we examined how perceptual disfluency—manipulated by varying the level of blur applied to letter strings influenced reaction times in a lexical decision task (i.e., is this letter string a word?), and whether these effects were related to how well someone remembers the words in a reconition memory task. In that study, low blur words affected early stages of encoding, reflected in the Gaussian location parameter $\mu$, but not the later, tail component captured by $\tau$. For the present illustration, however, I construct a sharper scenario in which $\mu$ and $\tau$ differ in opposite directions so that the two conditions share the same expected reaction time. Using the `rexgaussian2()` function from the {brms.exgaussian} package, I simulate ex-Gaussian data for clearly presented and low-blur words in which $\mu$ is set to 500 ms and 550 ms, $\tau$ to 100 ms and 50 ms, and $\sigma$ to 60 ms in both conditions (see @tbl-exgauss).
+To demonstrate the issue with fitting the default ex-Gaussian model in {brms}, we simulate data using a comparison adapted from one of our own studies [@geller2025] in R [version 4.6.0, @R]. In @geller2025, we examined how perceptual disfluency—manipulated by varying the level of blur applied to letter strings influenced reaction times in a lexical decision task (i.e., is this letter string a word?), and whether these effects were related to how well someone remembers the words in a reconition memory task. In that study, low blur words affected early stages of encoding, reflected in the Gaussian location parameter $\mu$, but not the later, tail component captured by $\tau$. For the present illustration, however, we construct a sharper scenario in which $\mu$ and $\tau$ differ in opposite directions so that the two conditions share the same expected reaction time. Using the classical ex-Gaussian parameterization implemented in the {cogmod} package [@makowski2026cogmod], we simulate ex-Gaussian data for clearly presented and low-blur words in which $\mu$ is set to 500 ms and 550 ms, $\tau$ to 100 ms and 50 ms, and $\sigma$ to 60 ms in both conditions (see @tbl-exgauss).
 
 ```{r}
 #| label: load-packages
@@ -116,53 +138,37 @@ To demonstrate the issue with fitting the default ex-Gaussian model in {brms}, I
 #| warning: false
 library(tidyverse)
 library(fs)
+#| 
 library(brms)
-library(brms.exgaussian)
 library(ragg)
 library(tinytable)
 library(easystats)
 library(ggplot2)
 library(ggdist)
-library(qs2)
 
-# Check if split .qs2 files need to be combined (e.g. after a fresh git clone)
-split_qs2_script <- if (file.exists("split_qs2.R")) "split_qs2.R" else if (file.exists("../split_qs2.R")) "../split_qs2.R" else NULL
-if (!is.null(split_qs2_script)) {
-  source(split_qs2_script)
-  root_dir <- if (dir.exists("Angele_et_al_2022")) "." else ".."
-  check_and_combine_qs2(root_dir)
+# Shared formatting helpers, reused when building the condensed (long-format)
+# tables: one row per condition/effect x parameter, with Greek symbols (μ, τ,
+# β) as values in a "Parameter" column rather than as column headers.
+fmt_num <- function(x, digits = 1) {
+  formatC(round(x, digits), format = "f", digits = digits)
 }
-
-
-# Tidy an easystats estimate object for display: merge contrast levels into a
-# single "Contrast" column, drop ROPE columns, and combine the CI bounds into
-# a single "95% CrI" column.
-clean_estimate <- function(x, digits = 1) {
-  d <- as.data.frame(x)
-  d <- d[, !grepl("^ROPE|^CI$", names(d)), drop = FALSE]
-  # combine Level1/Level2 (contrast tables) into a single "Contrast" label
-  l1 <- names(d)[tolower(names(d)) == "level1"]
-  l2 <- names(d)[tolower(names(d)) == "level2"]
-  if (length(l1) && length(l2)) {
-    d[["Contrast"]] <- paste(d[[l1]], "-", d[[l2]])
-    d[[l1]] <- NULL
-    d[[l2]] <- NULL
-  }
-  if (all(c("CI_low", "CI_high") %in% names(d))) {
-    d[["95% CrI"]] <- paste0(
-      "[", round(d$CI_low, digits), ", ", round(d$CI_high, digits), "]"
-    )
-    d$CI_low <- NULL
-    d$CI_high <- NULL
-  }
-  num <- setdiff(names(d)[vapply(d, is.numeric, logical(1))], "pd")
-  d[num] <- lapply(d[num], round, digits)
-  if ("pd" %in% names(d)) d$pd <- round(d$pd, 3)
-  # order: Contrast first, estimate next, then CrI and pd last
-  lead <- intersect("Contrast", names(d))
-  tail_cols <- intersect(c("95% CrI", "pd"), names(d))
-  d[, c(lead, setdiff(names(d), c(lead, tail_cols)), tail_cols), drop = FALSE]
+fmt_ci <- function(low, high, digits = 1) {
+  paste0("[", fmt_num(low, digits), ", ", fmt_num(high, digits), "]")
 }
+fmt_pd <- function(x, digits = 3) {
+  formatC(round(x, digits), format = "f", digits = digits)
+}
+```
+
+```{r}
+#| label: load-brms-exgaussian
+#| lst-label: lst-install-brms-exgaussian
+#| lst-cap: "Installing and loading the {cogmod} package from GitHub."
+
+# install from Github
+#remotes::install_github("DominiqueMakowski/cogmod")
+
+library(cogmod)
 ```
 
 ```{r}
@@ -194,10 +200,12 @@ tt(param_table)
 
 ### Simulate the Data
 
-We first draw 100 reaction times per condition (200 in total) from the ex-Gaussian distributions defined by these parameters.
+We first draw 100 reaction times per condition (200 in total) from the ex-Gaussian distributions defined by these parameters (@lst-simulate-data).
 
 ```{r}
 #| label: simulate-data
+#| lst-label: lst-simulate-data
+#| lst-cap: "Simulating ex-Gaussian reaction times for the Clear and Low-Blur conditions."
 # Fix the random seed so the simulated data are identical on every render.
 set.seed(1234)
 
@@ -215,14 +223,14 @@ d <- data.frame(
 # Row index (1 = Clear, 2 = Low-Blur) used to look up each trial's parameters.
 parameter_index <- as.integer(d$Blur)
 
-# Draw reaction times from the ex-Gaussian using each trial's condition values.
-d$rt <- brms.exgaussian::rexgaussian2(
+# Draw reaction times from the classical ex-Gaussian using each trial's
+# condition values, via {cogmod}'s rrt_exgaussian() generator.
+d$rt <- cogmod::rrt_exgaussian(
   n = nrow(d),
   mu = sim_params$mu[parameter_index],
   sigma = sim_params$sigma[parameter_index],
   tau = sim_params$tau[parameter_index]
 )
-
 ```
 
 @fig-datagen shows the simulated RT distribution for each condition and how the three ex-Gaussian parameters shape it: $\mu$ locates the Gaussian component, $\sigma$ sets its spread, and $\tau$ stretches the right tail. Because the increase in $\mu$ from Clear to Low-Blur is offset by an equal decrease in $\tau$, the overall mean $E(RT) = \mu + \tau$ is identical (600 ms) in both conditions.
@@ -242,50 +250,108 @@ annot$hi <- annot$full_mean + 4 * annot$tau
 
 ggplot(d, aes(x = rt)) +
   # RT distribution for each condition (kernel density via ggdist).
-  ggdist::stat_slab(aes(fill = Blur), normalize = "panels", color = NA, alpha = 0.85) +
+  ggdist::stat_slab(
+    aes(fill = Blur),
+    normalize = "panels",
+    color = NA,
+    alpha = 0.85
+  ) +
   # mu: Gaussian location (dashed) and E(RT) = mu + tau (solid).
-  geom_vline(data = annot, aes(xintercept = mu),
-             linetype = "dashed", linewidth = 0.5, colour = "grey25") +
+  geom_vline(
+    data = annot,
+    aes(xintercept = mu),
+    linetype = "dashed",
+    linewidth = 0.5,
+    colour = "grey25"
+  ) +
   # Bounded segment (not geom_vline) so the solid E(RT) line stops before the
   # "entire distribution" annotation below the panel instead of running through it.
-  geom_segment(data = annot, aes(x = full_mean, xend = full_mean, y = -0.12, yend = 1.3),
-               linewidth = 0.5, colour = "black") +
+  geom_segment(
+    data = annot,
+    aes(x = full_mean, xend = full_mean, y = -0.12, yend = 1.3),
+    linewidth = 0.5,
+    colour = "black"
+  ) +
   # sigma: double arrow spanning +/- sigma around mu (white, on the coloured fill).
   # Placed low (y = 0.22) so both arrowheads stay inside the fill for both
   # conditions, including the narrower Low-Blur distribution.
-  geom_segment(data = annot, aes(x = mu - sigma, xend = mu + sigma, y = 0.22, yend = 0.22),
-               arrow = grid::arrow(length = grid::unit(1.6, "mm"), ends = "both"),
-               linewidth = 0.5, colour = "white") +
-  geom_text(data = annot, aes(x = mu, y = 0.33, label = "sigma"),
-            parse = TRUE, size = 4.4, fontface = "bold", colour = "white") +
+  geom_segment(
+    data = annot,
+    aes(x = mu - sigma, xend = mu + sigma, y = 0.22, yend = 0.22),
+    arrow = grid::arrow(length = grid::unit(1.6, "mm"), ends = "both"),
+    linewidth = 0.5,
+    colour = "white"
+  ) +
+  geom_text(
+    data = annot,
+    aes(x = mu, y = 0.33, label = "sigma"),
+    parse = TRUE,
+    size = 4.4,
+    fontface = "bold",
+    colour = "white"
+  ) +
   # tau: rightward arrow over the tail (the exponential component stretches it right).
-  geom_segment(data = annot, aes(x = full_mean, xend = full_mean + 2 * tau, y = 1.06, yend = 1.06),
-               arrow = grid::arrow(length = grid::unit(1.9, "mm"), ends = "last"),
-               linewidth = 0.5, colour = "grey20") +
-  geom_text(data = annot, aes(x = full_mean + tau, y = 1.16, label = "tau~(tail)"),
-            parse = TRUE, size = 4.4, fontface = "bold") +
+  geom_segment(
+    data = annot,
+    aes(x = full_mean, xend = full_mean + 2 * tau, y = 1.06, yend = 1.06),
+    arrow = grid::arrow(length = grid::unit(1.9, "mm"), ends = "last"),
+    linewidth = 0.5,
+    colour = "grey20"
+  ) +
+  geom_text(
+    data = annot,
+    aes(x = full_mean + tau, y = 1.16, label = "tau~(tail)"),
+    parse = TRUE,
+    size = 4.4,
+    fontface = "bold"
+  ) +
   # axis-side labels for mu and E(RT) (nudged apart so they don't overlap).
-  geom_text(data = annot, aes(x = mu, y = -0.09, label = "mu"),
-            parse = TRUE, size = 4.6, fontface = "bold", colour = "grey20",
-            hjust = 1, nudge_x = -8) +
-  geom_text(data = annot, aes(x = full_mean, y = -0.09, label = "E(RT)"),
-            size = 4, fontface = "bold", hjust = 0, nudge_x = 8) +
+  geom_text(
+    data = annot,
+    aes(x = mu, y = -0.09, label = "mu"),
+    parse = TRUE,
+    size = 4.6,
+    fontface = "bold",
+    colour = "grey20",
+    hjust = 1,
+    nudge_x = -8
+  ) +
+  geom_text(
+    data = annot,
+    aes(x = full_mean, y = -0.09, label = "E(RT)"),
+    size = 4,
+    fontface = "bold",
+    hjust = 0,
+    nudge_x = 8
+  ) +
   # entire distribution: full-width span (its mean is E(RT); see caption).
-  geom_segment(data = annot, aes(x = lo, xend = hi, y = -0.19, yend = -0.19),
-               arrow = grid::arrow(length = grid::unit(1.4, "mm"), ends = "both"),
-               linewidth = 0.4, colour = "grey45") +
-  geom_text(data = annot, aes(x = full_mean, y = -0.34, label = "entire distribution"),
-            size = 3.3, colour = "grey30") +
-  facet_wrap(~ Blur, ncol = 1) +
-  scale_fill_manual(values = c("Clear" = "darkgreen", "Low-Blur" = "darkred"),
-                    guide = "none") +
+  geom_segment(
+    data = annot,
+    aes(x = lo, xend = hi, y = -0.19, yend = -0.19),
+    arrow = grid::arrow(length = grid::unit(1.4, "mm"), ends = "both"),
+    linewidth = 0.4,
+    colour = "grey45"
+  ) +
+  geom_text(
+    data = annot,
+    aes(x = full_mean, y = -0.34, label = "entire distribution"),
+    size = 3.3,
+    colour = "grey30"
+  ) +
+  facet_wrap(~Blur, ncol = 1) +
+  scale_fill_manual(
+    values = c("Clear" = "darkgreen", "Low-Blur" = "darkred"),
+    guide = "none"
+  ) +
   coord_cartesian(ylim = c(-0.38, 1.28), xlim = c(250, 1150), clip = "off") +
   labs(x = "Reaction time (ms)", y = NULL) +
   theme_minimal(base_size = 11) +
-  theme(axis.text.y = element_blank(),
-        panel.grid = element_blank(),
-        strip.text = element_text(face = "bold"),
-        plot.margin = margin(t = 5.5, r = 5.5, b = 22, l = 5.5))
+  theme(
+    axis.text.y = element_blank(),
+    panel.grid = element_blank(),
+    strip.text = element_text(face = "bold"),
+    plot.margin = margin(t = 5.5, r = 5.5, b = 22, l = 5.5)
+  )
 ```
 
 ## Default {brms} Parameterization
@@ -294,22 +360,23 @@ Using this data we fit the default `brms` ex-Gaussian model. In this parameteriz
 
 The exponential component is labeled `beta`. On the response scale, `beta` corresponds to the classical ex-Gaussian parameter $\tau$:
 
-$$\beta_{\texttt{}} = \tau_{\text{classical}}.$$
+$$\beta_{\texttt{brms}} = \tau_{\text{classical}}.$$
 
-Thus, `beta` and $\tau$ are not substantively different quantities. Both represent the mean of the exponential component. The difference is primarily one of notation. The important difference between the default {} model and the classical parameterization concerns `mu`:
+Thus, `beta` and $\tau$ are not substantively different quantities. Both represent the mean of the exponential component. The difference is primarily one of notation. The important difference between the default {brms} model and the classical parameterization concerns `mu`:
 
-$$\mu_{\texttt{}} = \mu_{\text{classical}} + \tau.$$
+$$\mu_{\texttt{brms}} = \mu_{\text{classical}} + \tau.$$
 
-In other words, the default **{`}`** parameterization uses `mu` for the expected value of the complete ex-Gaussian distribution, whereas the classical parameterization uses $\mu$ for the location of the Gaussian component.
+In other words, the default {brms} parameterization uses `mu` for the expected value of the complete ex-Gaussian distribution, whereas the classical parameterization uses $\mu$ for the location of the Gaussian component.
 
 Both the expected response and the exponential component are allowed to vary across conditions.
 
 ### Prior Specification
 
-The priors were selected to reflect the known scale of the simulated data while remaining sufficiently broad to allow the model to recover deviations from the generating values.
+The priors were selected to reflect the known scale of the simulated data while remaining sufficiently broad to allow the model to recover deviations from the generating values. @tbl-priors shows these priors alongside those used for the classical parameterization introduced later, so the two specifications can be compared directly.
 
 ```{r}
 #| label: priors-default
+#| echo: false
 priors_default <- c(
   # mu intercept: centered at 600 ms, the expected RT (E(RT)) of the reference
   # condition in this default parameterization.
@@ -337,79 +404,78 @@ priors_default <- c(
 )
 ```
 
-The intercept prior for the primary `mu` submodel is
+```{r}
+#| label: tbl-priors
+#| tbl-cap: "Prior specification for the default and classical ex-Gaussian models."
+#| echo: false
+#| results: asis
+priors_table <- data.frame(
+  Parameter = c(
+    "Intercept (μ)",
+    "Blur (μ)",
+    "Intercept (β / τ)",
+    "Blur (β / τ)",
+    "Intercept (σ)"
+  ),
+  Default = c(
+    "Normal(600, 100)",
+    "Normal(0, 50)",
+    "Normal(log(100), 0.5)",
+    "Normal(0, 0.5)",
+    "brms default"
+  ),
+  Classical = c(
+    "Normal(500, 100)",
+    "Normal(0, 50)",
+    "Normal(100, 50)",
+    "Normal(0, 50)",
+    "Normal(60, 30)"
+  ),
+  Notes = c(
+    "Same form; centered on each parameterization's reference-condition value (E(RT) = 600 ms vs. Gaussian location = 500 ms)",
+    "Identical across parameterizations; no assumed direction for the effect of Blur",
+    "Default model: brms's native `exgaussian()` uses a log link for beta, so the prior is on the log scale, centered at log(100 ms). Classical model: cogmod's `rt_exgaussian()` uses a softplus link (~identity away from zero), so the prior is specified directly on the response scale, centered at 100 ms",
+    "Same intent (no assumed direction for the effect of Blur) in both models, but expressed on the log scale for the default model and on the response scale for the classical model",
+    "Only the classical model estimates sigma explicitly; `rt_exgaussian()`'s softplus link lets the prior be specified directly on the response scale, centered at 60 ms"
+  )
+)
+colnames(priors_table) <- c(
+  "Parameter",
+  "Default Prior",
+  "Classical Prior",
+  "Notes"
+)
 
-$$\mu_{\text{Intercept}}
-\sim
-\mathcal{N}(600,100).$$
+tt(priors_table)
+```
 
-We center this prior at 600 ms because, in the default parameterization, `mu` represents the expected RT. The simulated expected RT for the reference condition is
-
-$$500 + 100 = 600 \text{ ms}.$$
-
-The standard deviation of 100 ms makes the prior informative about the plausible scale of RTs without tightly constraining the intercept to equal exactly 600 ms.
-
-The prior on the `Blur` coefficient is
-
-$$b_{\text{Blur}}
-\sim
-\mathcal{N}(0,50).$$
-
-This prior is centered at zero because, before observing the data, positive and negative condition effects are both plausible. A standard deviation of 50 ms allows substantial differences between conditions while placing less prior mass on implausibly large effects.
-
-The `beta` parameter is positive and uses a log link. Its intercept is therefore modeled on the log scale:
-
-$$\log(\beta_{\text{Clear}})
-\sim
-\mathcal{N}\left(\log(100),0.5\right).$$
-
-The prior is centered at $\log(100)$ because the simulated value of the exponential mean for the reference condition is 100 ms. After applying the inverse-link transformation, the prior is centered approximately around
-
-$$\beta_{\text{Clear}} = 100 \text{ ms}.$$
-
-The standard deviation of 0.5 is on the log scale. It therefore represents multiplicative rather than additive uncertainty.
-
-The prior on the effect of `Blur` on `beta` is
-
-$$b_{\beta,\text{Blur}}
-\sim
-\mathcal{N}(0,0.5).$$
-
-Because this coefficient is also on the log scale, a value of zero represents no difference between conditions:
-
-$$\exp(0)=1.$$
-
-The simulated change from 100 ms to 50 ms corresponds to the log ratio
-
-$$\log\left(\frac{50}{100}\right) = \log(0.5) \approx -0.693.$$
-
-The prior $\mathcal{N}(0,0.5)$ places reasonable prior mass near this value while still favoring smaller differences.
-
-The model can then be fit as follows:
+The model can then be fit as follows (@lst-fit-default):
 
 ```{r}
-#| label: fit--default
+#| label: fit-default
+#| lst-label: lst-fit-default
+#| lst-cap: "Fitting the default ex-Gaussian model in brms."
 fit_brms <- brm(
   bf(
-    rt ~ Blur,      # mu submodel: here mu is E(RT), not the Gaussian location
-    sigma ~ 1,      # constant Gaussian SD
-    beta ~ Blur     # exponential mean (the classical tau), allowed to vary
+    rt ~ Blur, # mu submodel: here mu is E(RT), not the Gaussian location
+    sigma ~ 1, # constant Gaussian SD
+    beta ~ Blur # exponential mean (the classical tau), allowed to vary
   ),
   data = d,
   prior = priors_default,
-  family = exgaussian(),   # 's built-in ex-Gaussian family
+  family = exgaussian(), # brms' built-in ex-Gaussian family
   chains = 2,
   iter = 2000,
   warmup = 500,
   backend = "cmdstanr",
   cores = 4,
-  seed = 1234              # reproducible draws
+  seed = 1234 # reproducible draws
 )
 ```
 
 ### Estimating Ex-Gaussian Parameters with `{easystats}`
 
-The `{modelbased}` package, which is part of the `{easystats}` ecosystem, can easily be used to obtain condition-specific posterior estimates from a fitted model. The `estimate_means()` function returns estimated parameters for each condition, back-transformed, so estimates are presented on time scale, whereas `estimate_contrasts()` computes differences between conditions.
+The `{modelbased}` package [@makowski2025modelbased], which is part of the `{easystats}` ecosystem [@ludecke2019insight], can easily be used to obtain condition-specific posterior estimates from a fitted model. The `estimate_means()` function returns estimated parameters for each condition, back-transformed, so estimates are presented on time scale, whereas `estimate_contrasts()` computes differences between conditions.
 
 As shown in @tbl-exgauss, the present data were generated so that the two conditions have the same expected reaction time but differ in the Gaussian and exponential components of the ex-Gaussian distribution.
 
@@ -421,10 +487,12 @@ Thus, the 50-ms increase in $\mu$ for the Low-Blur condition is offset by a 50-m
 
 ### Estimating the Expected Response ($\mu$)
 
-Condition-specific estimates of the expected response can be obtained with `estimate_means()` and setting `predict` argument to "mu":
+Condition-specific estimates of the expected response can be obtained with `estimate_means()` and setting `predict` argument to "mu" (@lst-estimate-mu-default):
 
 ```{r}
 #| label: estimate-mu-default
+#| lst-label: lst-estimate-mu-default
+#| lst-cap: "Estimating the condition-specific expected response (mu) from the default model."
 # Default model: per-condition mu, which equals E(RT) in this parameterization.
 overall_means <- estimate_means(
   fit_brms,
@@ -434,20 +502,14 @@ overall_means <- estimate_means(
 )
 ```
 
-```{r}
-#| label: tbl-default-means
-#| tbl-cap: "Estimated expected response, $E(RT)$, by condition from the default  model."
-#| echo: false
-#| results: asis
-tt(clean_estimate(overall_means))
-```
-
 Because the primary `mu` parameter in the default ex-Gaussian model represents $E(RT)$, these estimates should be close to 600 ms in both conditions.
 
-The corresponding contrast can be obtained using `estimate_contrasts()`:
+The corresponding contrast can be obtained using `estimate_contrasts()` (@lst-contrast-mu-default):
 
 ```{r}
 #| label: contrast-mu-default
+#| lst-label: lst-contrast-mu-default
+#| lst-cap: "Estimating the Blur contrast in the expected response (default model)."
 # Default model: Blur contrast in E(RT) (≈ 0 by design).
 overall_difference <- estimate_contrasts(
   fit_brms,
@@ -456,30 +518,22 @@ overall_difference <- estimate_contrasts(
 )
 ```
 
-```{r}
-#| label: tbl-default-contrast
-#| tbl-cap: "Blur contrast in the expected response from the default brms model."
-#| echo: false
-#| results: asis
-tt(clean_estimate(overall_difference))
-```
-
 The posterior estimate of this contrast should be close to zero because the two conditions were generated with the same expected RT:
 
 $$(550 + 50) - (500 + 100) = 600 - 600 = 0.$$
 
-Thus, the default model correctly recovers the absence of a difference in the full distributional mean. However, its primary `mu` coefficient does not directly reveal the 50-ms difference in the Gaussian-location parameter.
-
-#### Estimating the Exponential Component
+### Estimating the Exponential Component
 
 In the default {`brms}` parameterization, `beta` represents the mean of the exponential component. It therefore corresponds directly to $\tau$ in the classical parameterization:
 
 $$\beta = \tau.$$
 
-Condition-specific estimates can be obtained by requesting predictions for `beta`:
+Condition-specific estimates can be obtained by requesting predictions for `beta` (@lst-estimate-beta-default):
 
 ```{r}
 #| label: estimate-beta-default
+#| lst-label: lst-estimate-beta-default
+#| lst-cap: "Estimating the condition-specific exponential component (beta) from the default model."
 # Default model: per-condition beta (the exponential mean = classical tau).
 tau_estimates_default <- estimate_means(
   fit_brms,
@@ -489,22 +543,82 @@ tau_estimates_default <- estimate_means(
 )
 ```
 
+Although the resulting object is called `tau_estimates_default` for interpretive clarity, the parameter is named `beta` inside the default `brm` model. @tbl-default-means shows both the expected response and the exponential component together, by condition.
+
 ```{r}
-#| label: tbl-default-beta
-#| tbl-cap: "Estimated exponential component (`beta`) by condition from the default brms model."
+#| label: build-tbl-default-means
 #| echo: false
-#| results: asis
-tt(clean_estimate(tau_estimates_default))
+default_means_mu <- as.data.frame(overall_means)
+default_means_beta <- as.data.frame(tau_estimates_default)
+
+default_means_tbl <- rbind(
+  data.frame(
+    Blur = default_means_mu$Blur,
+    Parameter = "E(RT)",
+    Mean = fmt_num(default_means_mu$Mu),
+    `95% CrI` = fmt_ci(default_means_mu$CI_low, default_means_mu$CI_high),
+    pd = fmt_pd(default_means_mu$pd),
+    check.names = FALSE
+  ),
+  data.frame(
+    Blur = default_means_beta$Blur,
+    Parameter = "β",
+    Mean = fmt_num(default_means_beta$Beta),
+    `95% CrI` = fmt_ci(default_means_beta$CI_low, default_means_beta$CI_high),
+    pd = fmt_pd(default_means_beta$pd),
+    check.names = FALSE
+  )
+)
+default_means_tbl <- default_means_tbl[order(default_means_tbl$Blur), ]
+rownames(default_means_tbl) <- NULL
 ```
 
-Although the resulting object is called `tau_estimates_default` for interpretive clarity, the parameter is named `beta` inside the default `brm` model.
+Although the resulting object is called `tau_estimates_default` for interpretive clarity, the parameter is named `beta` inside the default `brm` model. @tbl-default-means shows both the expected response and the exponential component together, by condition.
 
-These estimates should be approximately 100 ms for Clear and 50 ms for Low-Blur.
+```{r}
+#| label: build-tbl-default-means
+#| echo: false
+default_means_mu <- as.data.frame(overall_means)
+default_means_beta <- as.data.frame(tau_estimates_default)
 
-The corresponding contrast can be obtained using:
+default_means_tbl <- rbind(
+  data.frame(
+    Blur = default_means_mu$Blur,
+    Parameter = "E(RT)",
+    Mean = fmt_num(default_means_mu$Mu),
+    `95% CrI` = fmt_ci(default_means_mu$CI_low, default_means_mu$CI_high),
+    pd = fmt_pd(default_means_mu$pd),
+    check.names = FALSE
+  ),
+  data.frame(
+    Blur = default_means_beta$Blur,
+    Parameter = "β",
+    Mean = fmt_num(default_means_beta$Beta),
+    `95% CrI` = fmt_ci(default_means_beta$CI_low, default_means_beta$CI_high),
+    pd = fmt_pd(default_means_beta$pd),
+    check.names = FALSE
+  )
+)
+default_means_tbl <- default_means_tbl[order(default_means_tbl$Blur), ]
+rownames(default_means_tbl) <- NULL
+```
+
+```{r}
+#| label: tbl-default-means
+#| tbl-cap: "Estimated expected response, $E(RT)$, and exponential component (`beta`), by condition from the default brms model."
+#| echo: false
+#| results: asis
+tt(default_means_tbl)
+```
+
+These estimates should be close to 600 ms for $E(RT)$ in both conditions, and approximately 100 ms for Clear and 50 ms for Low-Blur for `beta`.
+
+The corresponding contrasts can be obtained using (@lst-contrast-beta-default):
 
 ```{r}
 #| label: contrast-beta-default
+#| lst-label: lst-contrast-beta-default
+#| lst-cap: "Estimating the Blur contrast in the exponential component (beta) from the default model."
 # Default model: Blur contrast in beta (the exponential component).
 tau_difference_default <- estimate_contrasts(
   fit_brms,
@@ -515,37 +629,69 @@ tau_difference_default <- estimate_contrasts(
 ```
 
 ```{r}
-#| label: tbl-default-beta-contrast
-#| tbl-cap: "Blur contrast in the exponential component (`beta`) from the default brms model."
+#| label: build-tbl-default-contrast
 #| echo: false
-#| results: asis
-tt(clean_estimate(tau_difference_default))
+default_contrast_mu <- as.data.frame(overall_difference)
+default_contrast_beta <- as.data.frame(tau_difference_default)
+
+default_contrast_tbl <- rbind(
+  data.frame(
+    Contrast = paste(
+      default_contrast_mu$Level1,
+      "-",
+      default_contrast_mu$Level2
+    ),
+    Parameter = "E(RT)",
+    Estimate = fmt_num(default_contrast_mu$Mean),
+    `95% CrI` = fmt_ci(default_contrast_mu$CI_low, default_contrast_mu$CI_high),
+    pd = fmt_pd(default_contrast_mu$pd),
+    check.names = FALSE
+  ),
+  data.frame(
+    Contrast = paste(
+      default_contrast_beta$Level1,
+      "-",
+      default_contrast_beta$Level2
+    ),
+    Parameter = "β",
+    Estimate = fmt_num(default_contrast_beta$Mean),
+    `95% CrI` = fmt_ci(
+      default_contrast_beta$CI_low,
+      default_contrast_beta$CI_high
+    ),
+    pd = fmt_pd(default_contrast_beta$pd),
+    check.names = FALSE
+  )
+)
 ```
 
-As we can see in @tbl-default-beta-contrast, the differnce between the two conditions is approximetly 50 ms.
+```{r}
+#| label: tbl-default-contrast
+#| tbl-cap: "Blur contrast in the expected response, $E(RT)$, and the exponential component (`beta`), from the default brms model."
+#| echo: false
+#| results: asis
+tt(default_contrast_tbl)
+```
+
+As shown in @tbl-default-contrast, the default model correctly recovers a near-zero contrast in $E(RT)$, since the two conditions were generated with the same expected RT. However, its primary `mu` coefficient does not directly reveal the 50-ms difference in the Gaussian-location parameter — that difference only shows up in the `beta` contrast, which is approximately 50 ms.
 
 ## Classical Ex-Gaussian Parameterization
 
-As we have shown above, the default parameterization gives you the expected RT of the entire distribution. We can instead fit the model using the `{brms.exgaussian}` package, which implements the classical ex-Gaussian parameterization. In this model, $\mu$ represents the location of the Gaussian component and $\tau$ represents the mean of the exponential component.
-
-We first define the custom family and Stan functions from the {brms.exgaussian} package:
-
-```{r}
-#| label: exgaussian-family-setup
-# Custom family that reparameterizes brms so mu is the Gaussian location.
-exg_stanvars <- exgaussian2_stancode()  # Stan code injected into the model
-exg_family <- exgaussian2()             # the custom family definition
-```
+As we have shown above, the default paramterization gives you the exected RT of the entire distribution. We can instead fit the model using the `rt_exgaussian()` family from the {cogmod} package, which implements the classical ex-Gaussian parameterization. In this model, $\mu$ represents the location of the Gaussian component and $\tau$ represents the mean of the exponential component.
 
 ### Prior Specification
 
-The priors for the classical model are specified as follows:
+The priors for the classical model follow the same reasoning as those for the default model, shown together in @tbl-priors:
 
 ```{r}
 #| label: priors-classical
+#| echo: false
 priors_classical <- c(
   # mu intercept: centered at 500 ms, now the Gaussian location of the
-  # reference condition (not E(RT)).
+  # reference condition (not E(RT)). rt_exgaussian() uses a "softplus"
+  # link by default (log(1 + exp(x))), which behaves almost linearly
+  # away from zero, so priors can still be specified directly on the
+  # response (ms) scale.
   prior(
     normal(500, 100),
     class = "Intercept"
@@ -555,51 +701,43 @@ priors_classical <- c(
     normal(0, 50),
     class = "b"
   ),
-  # tau (exponential mean) intercept, log scale: exp(log(100)) = 100 ms.
+  # tau (exponential mean) intercept, on the response scale: 100 ms.
   prior(
-    normal(log(100), 0.5),
+    normal(100, 50),
     class = "Intercept",
     dpar = "tau"
   ),
-  # Effect of Blur on tau (log scale): centered at 0.
+  # Effect of Blur on tau, on the response scale: centered at 0.
   prior(
-    normal(0, 0.5),
+    normal(0, 50),
     class = "b",
     dpar = "tau"
   ),
-  # sigma (Gaussian SD) intercept, log scale: exp(log(60)) = 60 ms.
+  # sigma (Gaussian SD) intercept, on the response scale: 60 ms.
   prior(
-    normal(log(60), 0.5),
+    normal(60, 30),
     class = "Intercept",
     dpar = "sigma"
   )
 )
 ```
 
-These priors follow the same reasoning as those for the default model (described above), with two changes. First, the intercept is now centered at 500 ms rather than 600 ms, because in the classical parameterization `mu` denotes the Gaussian-location parameter (500 ms for the Clear reference condition) rather than the expected RT:
-
-$$\mu_{\text{Intercept}} \sim \mathcal{N}(500,100).$$
-
-Second, because this model estimates `sigma` explicitly, it receives its own weakly informative prior on the log scale, centered at the simulated Gaussian standard deviation of 60 ms:
-
-$$\log(\sigma) \sim \mathcal{N}\left(\log(60),0.5\right).$$
-
-The coefficient for `Blur` on `mu` and the exponential-component priors are unchanged from the default model; the latter now simply attach to `tau` rather than `beta`, reflecting the difference in labels rather than any difference in the underlying quantity.
-
-The model is then fit using:
+The model is then fit using (@lst-fit-classical):
 
 ```{r}
 #| label: fit-brms-classical
+#| lst-label: lst-fit-classical
+#| lst-cap: "Fitting the classical ex-Gaussian model using {cogmod}."
 fit_brms_new <- brm(
   bf(
-    rt ~ Blur,      # mu submodel: here mu IS the Gaussian location
-    tau ~ Blur,     # exponential mean (the tail), allowed to vary
-    sigma ~ 1       # constant Gaussian SD
+    rt ~ Blur, # mu submodel: here mu IS the Gaussian location
+    tau ~ Blur, # exponential mean (the tail), allowed to vary
+    sigma ~ 1 # constant Gaussian SD
   ),
   data = d,
   prior = priors_classical,
-  family = exg_family,        # custom classical ex-Gaussian family
-  stanvars = exg_stanvars,    # supplies its Stan implementation
+  family = rt_exgaussian(), # Reparametrized ex-Gaussian family from {cogmod}
+  stanvars = rt_exgaussian_stanvars(), # Stan code injected into the model
   chains = 2,
   iter = 2000,
   warmup = 500,
@@ -611,10 +749,12 @@ fit_brms_new <- brm(
 
 ### Estimating the Gaussian-Location Parameter
 
-For the classical model, estimates from the primary regression formula correspond to the Gaussian-location parameter $\mu$:
+For the classical model, estimates from the primary regression formula correspond to the Gaussian-location parameter $\mu$ (@lst-estimate-mu-classical):
 
 ```{r}
 #| label: estimate-mu-classical
+#| lst-label: lst-estimate-mu-classical
+#| lst-cap: "Estimating the Gaussian-location parameter (mu) from the classical model."
 # Classical model: per-condition mu, now the Gaussian-location parameter.
 mu_estimates <- estimate_means(
   fit_brms_new,
@@ -624,20 +764,14 @@ mu_estimates <- estimate_means(
 )
 ```
 
-```{r}
-#| label: tbl-classical-mu
-#| tbl-cap: "Estimated Gaussian-location parameter ($\\mu$) by condition from the classical model."
-#| echo: false
-#| results: asis
-tt(clean_estimate(mu_estimates))
-```
-
 The estimates are approximately 500 ms for Clear and 550 ms for Low-Blur.
 
-The contrast between the two can be obtained using:
+The contrast between the two can be obtained using (@lst-contrast-mu-classical):
 
 ```{r}
 #| label: contrast-mu-classical
+#| lst-label: lst-contrast-mu-classical
+#| lst-cap: "Estimating the Blur contrast in the Gaussian-location parameter (classical model)."
 # Classical model: Blur contrast in the Gaussian-location parameter mu.
 mu_difference <- estimate_contrasts(
   fit_brms_new,
@@ -647,22 +781,16 @@ mu_difference <- estimate_contrasts(
 )
 ```
 
-```{r}
-#| label: tbl-classical-mu-contrast
-#| tbl-cap: "Blur contrast in the Gaussian-location parameter ($\\mu$) from the classical model."
-#| echo: false
-#| results: asis
-tt(clean_estimate(mu_difference))
-```
-
 The posterior mean will not necessarily equal exactly 50 ms because of sampling variability. However, the 95% credible interval should contain the population value of 50 ms when the model successfully recovers the simulated effect.
 
 ### Estimating the Exponential Component
 
-Condition-specific estimates of $\tau$ can be obtained by requesting predictions for the `tau` distributional parameter:
+Condition-specific estimates of $\tau$ can be obtained by requesting predictions for the `tau` distributional parameter (@lst-estimate-tau-classical):
 
 ```{r}
 #| label: estimate-tau-classical
+#| lst-label: lst-estimate-tau-classical
+#| lst-cap: "Estimating the exponential component (tau) from the classical model."
 # Classical model: per-condition tau (the exponential component).
 tau_estimates <- estimate_means(
   fit_brms_new,
@@ -672,20 +800,88 @@ tau_estimates <- estimate_means(
 )
 ```
 
+@tbl-classical-means shows the Gaussian-location and exponential-component estimates together, by condition.
+
 ```{r}
-#| label: tbl-classical-tau
-#| tbl-cap: "Estimated exponential component ($\\tau$) by condition from the classical model."
+#| label: build-tbl-classical-means
 #| echo: false
-#| results: asis
-tt(clean_estimate(tau_estimates))
+classical_means_mu <- as.data.frame(mu_estimates)
+classical_means_tau <- as.data.frame(tau_estimates)
+
+classical_means_tbl <- rbind(
+  data.frame(
+    Blur = classical_means_mu$Blur,
+    Parameter = "μ",
+    Mean = fmt_num(classical_means_mu$Mu),
+    `95% CrI` = fmt_ci(classical_means_mu$CI_low, classical_means_mu$CI_high),
+    pd = fmt_pd(classical_means_mu$pd),
+    check.names = FALSE
+  ),
+  # estimate_means(predict = "tau") names the estimate column "Mean", not
+  # "Tau" (unlike "mu"/"beta", which do get their own name), with this
+  # model's default marginaleffects backend.
+  data.frame(
+    Blur = classical_means_tau$Blur,
+    Parameter = "τ",
+    Mean = fmt_num(classical_means_tau$Mean),
+    `95% CrI` = fmt_ci(classical_means_tau$CI_low, classical_means_tau$CI_high),
+    pd = fmt_pd(classical_means_tau$pd),
+    check.names = FALSE
+  )
+)
+classical_means_tbl <- classical_means_tbl[order(classical_means_tbl$Blur), ]
+rownames(classical_means_tbl) <- NULL
 ```
 
-The estimates should be close to 100 ms for Clear and 50 ms for Low-Blur.
+@tbl-classical-means shows the Gaussian-location and exponential-component estimates together, by condition.
 
-The corresponding contrast can be obtained using:
+```{r}
+#| label: build-tbl-classical-means
+#| echo: false
+classical_means_mu <- as.data.frame(mu_estimates)
+classical_means_tau <- as.data.frame(tau_estimates)
+
+classical_means_tbl <- rbind(
+  data.frame(
+    Blur = classical_means_mu$Blur,
+    Parameter = "μ",
+    Mean = fmt_num(classical_means_mu$Mu),
+    `95% CrI` = fmt_ci(classical_means_mu$CI_low, classical_means_mu$CI_high),
+    pd = fmt_pd(classical_means_mu$pd),
+    check.names = FALSE
+  ),
+  # estimate_means(predict = "tau") names the estimate column "Mean", not
+  # "Tau" (unlike "mu"/"beta", which do get their own name), with this
+  # model's default marginaleffects backend.
+  data.frame(
+    Blur = classical_means_tau$Blur,
+    Parameter = "τ",
+    Mean = fmt_num(classical_means_tau$Mean),
+    `95% CrI` = fmt_ci(classical_means_tau$CI_low, classical_means_tau$CI_high),
+    pd = fmt_pd(classical_means_tau$pd),
+    check.names = FALSE
+  )
+)
+classical_means_tbl <- classical_means_tbl[order(classical_means_tbl$Blur), ]
+rownames(classical_means_tbl) <- NULL
+```
+
+```{r}
+#| label: tbl-classical-means
+#| tbl-cap: "Estimated Gaussian-location ($\\mu$) and exponential ($\\tau$) parameters, by condition, from the classical model."
+#| echo: false
+#| results: asis
+tt(classical_means_tbl)
+```
+
+The estimates should be close to 100 ms for Clear and 50 ms for Low-Blur for $\tau$.
+
+The corresponding contrast can be obtained using (@lst-contrast-tau-classical):
 
 ```{r}
 #| label: contrast-tau-classical
+#| lst-label: lst-contrast-tau-classical
+#| lst-cap: "Estimating the Blur contrast in the exponential component (tau) from the classical model."
 # Classical model: Blur contrast in tau (the exponential component).
 tau_difference <- estimate_contrasts(
   fit_brms_new,
@@ -696,116 +892,128 @@ tau_difference <- estimate_contrasts(
 ```
 
 ```{r}
-#| label: tbl-classical-tau-contrast
-#| tbl-cap: "Blur contrast in the exponential component ($\\tau$) from the classical model."
+#| label: build-tbl-classical-contrast
 #| echo: false
-#| results: asis
-tt(clean_estimate(tau_difference))
+classical_contrast_mu <- as.data.frame(mu_difference)
+classical_contrast_tau <- as.data.frame(tau_difference)
+
+classical_contrast_tbl <- rbind(
+  data.frame(
+    Contrast = paste(
+      classical_contrast_mu$Level1,
+      "-",
+      classical_contrast_mu$Level2
+    ),
+    Parameter = "μ",
+    Mean = fmt_num(classical_contrast_mu$Mean),
+    `95% CrI` = fmt_ci(
+      classical_contrast_mu$CI_low,
+      classical_contrast_mu$CI_high
+    ),
+    pd = fmt_pd(classical_contrast_mu$pd),
+    check.names = FALSE
+  ),
+  data.frame(
+    Contrast = paste(
+      classical_contrast_tau$Level1,
+      "-",
+      classical_contrast_tau$Level2
+    ),
+    Parameter = "τ",
+    Mean = fmt_num(classical_contrast_tau$Mean),
+    `95% CrI` = fmt_ci(
+      classical_contrast_tau$CI_low,
+      classical_contrast_tau$CI_high
+    ),
+    pd = fmt_pd(classical_contrast_tau$pd),
+    check.names = FALSE
+  )
+)
 ```
 
-The results seen in @tbl-classical-tau-contrast are very similar to the default paramaterization.
+```{r}
+#| label: tbl-classical-contrast
+#| tbl-cap: "Blur contrast in the Gaussian-location ($\\mu$) and exponential ($\\tau$) parameters, from the classical model."
+#| echo: false
+#| results: asis
+tt(classical_contrast_tbl)
+```
 
-This example illustrates the central difference between the two parameterizations. The default {**`brms`**} ex-Gaussian model directly estimates the expected response and labels that parameter `mu`. The exponential component is labeled `beta`, although it corresponds to the classical $\tau$ parameter. In contrast, the `{brms.exgaussian}` model uses `mu` for the Gaussian-location parameter and `tau` for the exponential mean, consistent with the classical parameterization commonly used in reaction-time research.
+The results seen in @tbl-classical-contrast are very similar to the default paramaterization for $\tau$, but unlike the default model, the classical model's $\mu$ contrast directly recovers the simulated 50-ms shift in the Gaussian location.
+
+This example illustrates the central difference between the two parameterizations. The default {**`brms`**} ex-Gaussian model directly estimates the expected response and labels that parameter `mu`. The exponential component is labeled `beta`, although it corresponds to the classical $\tau$ parameter. In contrast, the `{cogmod}`'s `rt_exgaussian()` model uses `mu` for the Gaussian-location parameter and `tau` for the exponential mean, consistent with the classical parameterization commonly used in reaction-time research.
 
 ## Real Example
 
-In order to demonstrate the how the difference between parameterizations can affect the intepretation of real data, we re-analyze Experiment 1 from @angele2023. The main focus of @angele2023's study was to test whether the masked priming paradigm can be successfully implemented in a Javascript-based online experiment. However @angele2023 also attempt to make a theoretical contribution by using the ex-Gaussian model to evaluate @forster1998pros's savings hypothesis. @forster1998pros argued that, if the prime is identical to the target, having pre-processed the prime will allow participants to respond faster. In this case, the whole distribution of reaction times should be shifted to the left for the related condition compaed to the unrelated condition, i.e., there should be an effect on $\mu$, rather than only on the slower responses, i.e., $\tau$. The experiment had a more complex design than the previous examples: participants completed a masked identity priming lexical decision task across two prime exposure durations (33 ms vs. 50 ms) and two priming conditions (Identical vs. Unrelated). Descriptive statistics for response times and accuracy for word targets across experimental conditions are reported in @tbl-exp1-descriptive-rt.
+In order to demonstrate how the difference between parameterizations can affect the interpretation of real data, we re-analyze Experiment 1 from @angele2023. The main focus of @angele2023's study was to test whether the masked priming paradigm can be successfully implemented in a Javascript-based online experiment. However, @angele2023 also attempt to make a theoretical contribution by using the ex-Gaussian model to evaluate @forster1998pros's savings hypothesis. @forster1998pros argued that, if the prime is identical to the target, having pre-processed the prime will allow participants to respond faster. In this case, the whole distribution of reaction times should be shifted to the left for the related condition compared to the unrelated condition, i.e., there should be an effect on $\mu$, rather than on the slower responses, i.e., $\tau$. The experiment had a more complex design than the previous examples: participants completed a masked identity priming lexical decision task across two prime exposure durations (33 ms vs. 50 ms) and two priming conditions (Identical vs. Unrelated).
 
-```{r}
-#| label: tbl-exp1-descriptive-rt
-#| tbl-cap: "Mean, Median, Standard Deviation (SD), range of correct RTs (in ms) and Accuracy (proportion of correct responses) for word targets in Experiment 1 in each condition."
-#| echo: false
-#| results: asis
+To fit their ex-Gaussian models, @angele2023 used the built-in `exgaussian()` family in {brms}. As established above, the primary formula in default {brms} models the overall distributional mean $E(RT) = \mu_{\text{Gaussian}} + \tau$, despite assigning the label `mu` to this parameter. In their manuscript, @angele2023 interpreted regression effects on `mu` as changes in the location of the Gaussian component $\mu$.
 
-library(tidyverse)
-library(fs)
+Here, we apply the classical ex-Gaussian parameterization using `{cogmod}`, modeling reaction times with maximal random intercepts and random slopes for participants (`source`) and items (`Target`) across both $\mu$ (Gaussian location) and $\tau$ (exponential mean).
 
-angele_dir <- if (dir.exists("Angele_et_al_2022")) "Angele_et_al_2022" else "../Angele_et_al_2022"
-exp1_all_participants <- read_csv(file.path(angele_dir, "participant_data_exp1.csv"), show_col_types = FALSE)
-
-exp1 <- fs::dir_ls(path = file.path(angele_dir, "data_exp1"), glob = "*.csv") %>%
-  map_dfr(read_csv, .id = "source", col_type = cols(
-    .default = col_character(), rt = col_double(), corr = col_integer(), TrialID = col_integer()
-  )) %>% 
-  filter(!is.na(TrialID) & TrialID < 1000) %>%
-  select(source, participant, date, OS, frameRate, rt, corr, TrialID, StimulusType, Condition, PrimeDuration, Prime, Target)
-
-exp1$device <- ifelse(exp1$OS %in% c("Linux armv7l", "Linux armv8l"), "android", "computer")
-
-exp1_actual_participants <- filter(exp1_all_participants, (PROLIFIC_PID %in% exp1$participant) & (nchar(PROLIFIC_PID) == 24) & !(PROLIFIC_PID %in% c("5fa3b4abbcfd0b6c243758bc")) & (`What is your age?` != 99) & (`Response ID` != "R_sU4qJ6UCe9jRKs9"))
-
-exp1_accuracy_by_participant <- exp1 %>% filter(participant %in% exp1_actual_participants$PROLIFIC_PID) %>% group_by(source) %>% summarise(acc = mean(corr == 1), N = n())
-
-exp1_participants_to_include <- exp1_accuracy_by_participant %>% filter(N == 480 & acc >= .8)
-
-exp1_data_to_include <- exp1 %>% 
-  filter(source %in% exp1_participants_to_include$source & participant %in% exp1_actual_participants$PROLIFIC_PID) %>% 
-  mutate(
-    StimulusType = StimulusType %>% factor(levels = c("NW", "WORD"), labels = c("Nonword", "Word")), 
-    Relatedness = Condition %>% factor(levels = c("ID", "UN"), labels = c("Identical", "Unrelated")), 
-    PrimeDuration = PrimeDuration %>% factor(levels = c(33, 50), labels = c("33.3 ms", "50 ms")), 
-    rt = rt * 1000
-  )
-
-exp1_descriptives_rt <- exp1_data_to_include %>%
-  filter(StimulusType == "Word" & rt > 250 & rt <= 1800 & corr == 1) %>%
-  group_by(PrimeDuration, Relatedness) %>%
-  summarize(
-    Mean = round(mean(rt)),
-    Median = round(median(rt)),
-    SD = round(sd(rt)),
-    Min = round(min(rt)),
-    Max = round(max(rt)),
-    .groups = "drop"
-  )
-
-exp1_descriptives_corr <- exp1_data_to_include %>%
-  filter(StimulusType == "Word" & rt > 250 & rt <= 1800) %>%
-  group_by(PrimeDuration, Relatedness) %>%
-  summarize(
-    Accuracy = sprintf("%.2f", mean(corr)),
-    .groups = "drop"
-  )
-
-exp1_descriptives_rt$Accuracy <- exp1_descriptives_corr$Accuracy
-colnames(exp1_descriptives_rt)[1] <- "Prime Duration"
-
-tt(exp1_descriptives_rt)
-```
-
-In the original study, @angele2023 applied the default {**`brms`**} ex-Gaussian model, erroneously reporting the first parameter $\mu$ as the mean of the Gaussian component instead of $E(RT)$. While this did not affect the main conclusions of the study, which demonstrated that masked priming was indeed feasible in a Javascript-based online experiment, it could be argued that the interpretation of the results with regards to @forster1998pros's savings hypothesis may have been affected by this misinterpretation. Here, we apply the classical ex-Gaussian parameterization using `{brms.exgaussian}`, modeling reaction times with maximal random intercepts and random slopes for participants (`source`) and items (`Target`) across both $\mu$ (Gaussian location) and $\tau$ (exponential mean).
-
-Prior specification for the classical model:
+Prior specification for the classical model is summarized in @tbl-priors-real.
 
 ```{r}
 #| label: priors-real-exp1
 #| eval: false
+#| echo: false
 priors_classical <- c(
   # Gaussian location mu: Intercept & effects
   prior(normal(500, 100), class = "Intercept"),
   prior(normal(0, 100), class = "b", coef = "Condition1"),
   prior(normal(0, 100), class = "b", coef = "PrimeDuration1"),
   prior(normal(0, 100), class = "b", coef = "Condition1:PrimeDuration1"),
-  
-  # Exponential tail tau (on log scale): Intercept & effects
-  prior(normal(log(100), 0.5), class = "Intercept", dpar = "tau"),
-  prior(normal(0, 0.5), class = "b", dpar = "tau"),
-  
-  # Gaussian SD sigma (on log scale): Intercept
-  prior(normal(log(60), 0.5), class = "Intercept", dpar = "sigma")
+
+  # Exponential tail tau (response scale, via cogmod's softplus link): Intercept & effects
+  prior(normal(100, 50), class = "Intercept", dpar = "tau"),
+  prior(normal(0, 50), class = "b", dpar = "tau"),
+
+  # Gaussian SD sigma (response scale): Intercept
+  prior(normal(60, 30), class = "Intercept", dpar = "sigma")
 )
+```
+
+```{r}
+#| label: tbl-priors-real
+#| tbl-cap: "Prior specification for the classical ex-Gaussian model fit to Experiment 1 from @angele2023."
+#| echo: false
+#| results: asis
+priors_table_real <- data.frame(
+  Parameter = c(
+    "Intercept (μ)",
+    "Condition (μ)",
+    "Prime Duration (μ)",
+    "Condition x Prime Duration (μ)",
+    "Intercept (τ)",
+    "All effects (τ)",
+    "Intercept (σ)"
+  ),
+  Prior = c(
+    "Normal(500, 100)",
+    "Normal(0, 100)",
+    "Normal(0, 100)",
+    "Normal(0, 100)",
+    "Normal(100, 50)",
+    "Normal(0, 50)",
+    "Normal(60, 30)"
+  )
+)
+tt(priors_table_real)
 ```
 
 ### Initial Values Specification
 
-When no initial values are provided, Stan will randomly generate starting values between -2 and 2 from a uniform distribution. However, in complex hierarchical models, this can sometimes lead to extreme initial values that may be rejected by the sampler or cause slow convergence. Because of this, we use an explicit initialization function (`init_classical`) that sets reasonable starting values^[$\mu = 500\text{ ms}$ for the Gaussian location intercept, $\log(\sigma) = \log(60)$ for the Gaussian standard deviation, and $\log(\tau) = \log(100)$ for the mean of the exponential component. All fixed effects are initialized to 0, participant and item random intercept standard deviations are set to a small number (30 for $\mu$) and (0.1 for $\tau$), all standardized random effects are initialized to 0, and Cholesky correlation matrices are initialized to identity matrices.] for all model parameters. It is important to note that, unlike the priors, these initial values will not influence the posterior distribution. They are simply used to help the sampler start in a reasonable region of the parameter space.
+When fitting complex hierarchical ex-Gaussian models with random effects on parameters constrained to be positive (such as $\tau$ and $\sigma$), Stan's default unconstrained random initialization (in $[-2, 2]$) can cause severe numerical instability. Standard deviations randomly drawn near the upper end of this range can generate extreme individual-level parameter deviations, causing MCMC chains to immediately reject initial values (`log probability evaluates to log(0)`) or fail to start.
+
+To prevent initial value rejection and ensure reliable sampling across all chains, we supply an explicit initialization function (`init_classical`) that sets reasonable starting values for all model parameters. The full code for this function is omitted here for brevity but can be found in the manuscript's `.qmd` source file on GitHub.
 
 ```{r}
 #| label: inits-real-exp1
 #| eval: false
+#| echo: false
 
 # Subset data to determine random effect dimensions
-data_fit <- exp1_data_to_include %>% 
+data_fit <- exp1_data_to_include %>%
   filter(corr == 1 & StimulusType == "Word" & rt > 250 & rt < 1800)
 
 N_source <- length(unique(data_fit$source))
@@ -814,23 +1022,23 @@ N_target <- length(unique(data_fit$Target))
 # Function generating stable initial values for all Stan parameters
 init_classical <- function() {
   list(
-    Intercept = 500,           # Gaussian location (identity link)
-    Intercept_sigma = log(60), # Gaussian SD (log link)
-    Intercept_tau = log(100),  # Exponential tail (log link)
-    b = rep(0, 3),             # Fixed effects on mu
-    b_tau = rep(0, 3),         # Fixed effects on tau
-    sd_1 = rep(30, 4),         # Participant SDs for mu (ms)
-    sd_2 = rep(30, 4),         # Item SDs for mu (ms)
-    sd_3 = rep(0.1, 4),        # Participant SDs for tau (log scale, small to prevent overflow)
-    sd_4 = rep(0.1, 4),        # Item SDs for tau (log scale, small to prevent overflow)
-    z_1 = matrix(0, nrow = 4, ncol = N_source),  # Participant random effects for mu
-    z_2 = matrix(0, nrow = 4, ncol = N_target),  # Item random effects for mu
-    z_3 = matrix(0, nrow = 4, ncol = N_source),  # Participant random effects for tau
-    z_4 = matrix(0, nrow = 4, ncol = N_target),  # Item random effects for tau
-    L_1 = diag(4),             # Cholesky factor for participant random effects (mu)
-    L_2 = diag(4),             # Cholesky factor for item random effects (mu)
-    L_3 = diag(4),             # Cholesky factor for participant random effects (tau)
-    L_4 = diag(4)              # Cholesky factor for item random effects (tau)
+    Intercept = 500, # Gaussian location
+    Intercept_sigma = 60, # Gaussian SD (response scale, softplus link)
+    Intercept_tau = 100, # Exponential tail (response scale, softplus link)
+    b = rep(0, 3), # Fixed effects on mu
+    b_tau = rep(0, 3), # Fixed effects on tau
+    sd_1 = rep(30, 4), # Participant SDs for mu (ms)
+    sd_2 = rep(30, 4), # Item SDs for mu (ms)
+    sd_3 = rep(0.1, 4), # Participant SDs for tau (small to prevent overflow)
+    sd_4 = rep(0.1, 4), # Item SDs for tau (small to prevent overflow)
+    z_1 = matrix(0, nrow = 4, ncol = N_source), # Participant random effects for mu
+    z_2 = matrix(0, nrow = 4, ncol = N_target), # Item random effects for mu
+    z_3 = matrix(0, nrow = 4, ncol = N_source), # Participant random effects for tau
+    z_4 = matrix(0, nrow = 4, ncol = N_target), # Item random effects for tau
+    L_1 = diag(4), # Cholesky factor for participant random effects (mu)
+    L_2 = diag(4), # Cholesky factor for item random effects (mu)
+    L_3 = diag(4), # Cholesky factor for participant random effects (tau)
+    L_4 = diag(4) # Cholesky factor for item random effects (tau)
   )
 }
 ```
@@ -840,36 +1048,38 @@ The classical ex-Gaussian model for Experiment 1 is specified and fit as follows
 ```{r}
 #| label: fit-real-exp1-code
 #| eval: false
-# Setup custom classical ex-Gaussian family from {brms.exgaussian}
-exg_stanvars <- exgaussian2_stancode()
-exg_family <- exgaussian2()
-
 # Fit classical ex-Gaussian hierarchical model to Experiment 1 RT data
 blmm_exp1_classical_rt <- brm(
-  data = data_fit, 
+  data = data_fit,
   formula = bf(
-    rt ~ Condition * PrimeDuration + (1 + Condition * PrimeDuration|source) + (1 + Condition * PrimeDuration|Target), 
-    tau ~ Condition * PrimeDuration + (1 + Condition * PrimeDuration|source) + (1 + Condition * PrimeDuration|Target),
+    rt ~ Condition *
+      PrimeDuration +
+      (1 + Condition * PrimeDuration | source) +
+      (1 + Condition * PrimeDuration | Target),
+    tau ~ Condition *
+      PrimeDuration +
+      (1 + Condition * PrimeDuration | source) +
+      (1 + Condition * PrimeDuration | Target),
     sigma ~ 1
   ),
   warmup = 1000,
   iter = 5000,
   chains = 4,
   prior = priors_classical,
-  family = exg_family,
-  stanvars = exg_stanvars,
+  family = rt_exgaussian(), # Reparametrized ex-Gaussian family from {cogmod}
+  stanvars = rt_exgaussian_stanvars(), # Stan code injected into the model
   inits = init_classical,
-  cores = 4, 
-  backend = "cmdstanr", 
+  cores = 4,
+  backend = "cmdstanr",
   threads = threading(2)
 )
 ```
 
 Depending on the hardware used, this model may take more than 30 minutes to fit. Because of this, it is recommended to fit it once and then save the fitted model object to a file for later use.
 
-### Gaussian-Location Parameter ($\mu$)
+### Estimating Ex-Gaussian Parameters with `{easystats}`
 
-Under the classical parameterization, the primary regression formula directly estimates the Gaussian location parameter $\mu$. @tbl-real-mu displays the estimated posterior means for $\mu$ across priming conditions and exposure durations, and @tbl-real-mu-contrast presents the model's population-level predictor effects (main effect of relatedness, main effect of prime duration, and their interaction) alongside simple priming contrasts (Unrelated minus Identical) at each prime duration.
+As in the Simulation Example, we use `{modelbased}`'s `estimate_means()` and `estimate_contrasts()` to obtain condition-specific posterior estimates and contrasts, rather than computing them by hand from the raw posterior draws. Because this model has thousands of posterior draws and a large number of by-participant and by-item random effects, we set `backend = "emmeans"` (instead of the default `marginaleffects` backend) to keep the marginal computations memory-efficient.
 
 ```{r}
 #| label: fit-real-exp1
@@ -877,176 +1087,317 @@ Under the classical parameterization, the primary regression formula directly es
 #| message: false
 #| warning: false
 
-exp1_qs2_path <- if (file.exists("Angele_et_al_2022/blmm_exp1_classical_rt.qs2")) {
-  "Angele_et_al_2022/blmm_exp1_classical_rt.qs2"
-} else {
-  "../Angele_et_al_2022/blmm_exp1_classical_rt.qs2"
+exp1_rds_path <- here::here(
+  "ms",
+  "Angele_et_al_2022",
+  "blmm_exp1_classical_rt.rds"
+)
+
+fit_exp1_classical <- readRDS(exp1_rds_path)
+
+# Harmonizes contrast direction to "Unrelated - Identical" / "50 ms - 33 ms",
+# matching the sign of the raw population-level regression coefficients.
+flip_contrast <- function(x) {
+  d <- as.data.frame(x)
+  new_low <- -d$CI_high
+  new_high <- -d$CI_low
+  d$Difference <- -d$Difference
+  d$CI_low <- new_low
+  d$CI_high <- new_high
+  d
 }
+```
 
-fit_exp1_classical <- qs_read(exp1_qs2_path)
-draws_exp1 <- as_draws_df(fit_exp1_classical)
+```{r}
+#| label: estimate-means-real
+#| echo: false
 
-format_summary_table <- function(df, digits = 1) {
-  if (all(c("CI_low", "CI_high") %in% names(df))) {
-    df[["95% CrI"]] <- paste0("[", round(df$CI_low, digits), ", ", round(df$CI_high, digits), "]")
-    df$CI_low <- NULL
-    df$CI_high <- NULL
-  }
-  num_cols <- names(df)[vapply(df, is.numeric, logical(1))]
-  df[num_cols] <- lapply(df[num_cols], round, digits)
-  df
+real_means_mu <- as.data.frame(estimate_means(
+  fit_exp1_classical,
+  by = c("Condition", "PrimeDuration"),
+  predict = "mu",
+  centrality = "mean",
+  backend = "emmeans"
+))
+real_means_tau <- as.data.frame(estimate_means(
+  fit_exp1_classical,
+  by = c("Condition", "PrimeDuration"),
+  predict = "tau",
+  centrality = "mean",
+  backend = "emmeans"
+))
+
+real_means_tbl <- rbind(
+  data.frame(
+    Condition = real_means_mu$Condition,
+    PrimeDuration = real_means_mu$PrimeDuration,
+    Parameter = "μ",
+    Mean = fmt_num(real_means_mu$Mu),
+    `95% CrI` = fmt_ci(real_means_mu$CI_low, real_means_mu$CI_high),
+    pd = fmt_pd(real_means_mu$pd),
+    check.names = FALSE
+  ),
+  data.frame(
+    Condition = real_means_tau$Condition,
+    PrimeDuration = real_means_tau$PrimeDuration,
+    Parameter = "τ",
+    Mean = fmt_num(real_means_tau$Tau),
+    `95% CrI` = fmt_ci(real_means_tau$CI_low, real_means_tau$CI_high),
+    pd = fmt_pd(real_means_tau$pd),
+    check.names = FALSE
+  )
+)
+real_means_tbl <- real_means_tbl[
+  order(real_means_tbl$Condition, real_means_tbl$PrimeDuration),
+]
+rownames(real_means_tbl) <- NULL
+```
+
+```{r}
+#| label: tbl-real-means
+#| tbl-cap: "Estimated Gaussian-location ($\\mu$) and exponential ($\\tau$) parameters by condition and prime duration for Experiment 1 from @angele2023 under the classical model."
+#| echo: false
+#| results: asis
+tt(real_means_tbl)
+```
+
+@tbl-real-means displays the estimated posterior means for $\mu$ and $\tau$ across priming conditions and exposure durations. @tbl-real-contrasts below presents the model's population-level effects (main effect of relatedness, main effect of prime duration, and their interaction) alongside simple priming contrasts (Unrelated minus Identical) at each prime duration, for both parameters side by side.
+
+```{r}
+#| label: estimate-contrasts-real
+#| echo: false
+
+mu_main_cond <- flip_contrast(estimate_contrasts(
+  fit_exp1_classical,
+  contrast = "Condition",
+  predict = "mu",
+  centrality = "mean",
+  backend = "emmeans"
+))
+mu_main_dur <- flip_contrast(estimate_contrasts(
+  fit_exp1_classical,
+  contrast = "PrimeDuration",
+  predict = "mu",
+  centrality = "mean",
+  backend = "emmeans"
+))
+mu_simple <- flip_contrast(estimate_contrasts(
+  fit_exp1_classical,
+  contrast = "Condition",
+  by = "PrimeDuration",
+  predict = "mu",
+  centrality = "mean",
+  backend = "emmeans"
+))
+
+tau_main_cond <- flip_contrast(estimate_contrasts(
+  fit_exp1_classical,
+  contrast = "Condition",
+  predict = "tau",
+  centrality = "mean",
+  backend = "emmeans"
+))
+tau_main_dur <- flip_contrast(estimate_contrasts(
+  fit_exp1_classical,
+  contrast = "PrimeDuration",
+  predict = "tau",
+  centrality = "mean",
+  backend = "emmeans"
+))
+tau_simple <- flip_contrast(estimate_contrasts(
+  fit_exp1_classical,
+  contrast = "Condition",
+  by = "PrimeDuration",
+  predict = "tau",
+  centrality = "mean",
+  backend = "emmeans"
+))
+
+# mu is estimated on the identity scale, so the raw population-level
+# interaction coefficient already is the response-scale (ms) interaction.
+fixed_effects_real <- as.data.frame(parameters::model_parameters(
+  fit_exp1_classical,
+  effects = "fixed",
+  centrality = "mean"
+))
+mu_intx <- fixed_effects_real[
+  fixed_effects_real$Parameter == "b_Condition1:PrimeDuration1",
+]
+
+# tau uses a nonlinear link, so its response-scale (ms) interaction is not
+# the raw (log-scale) regression coefficient. estimate_contrasts() has no
+# built-in "difference of differences" comparison, so we get the four cell-wise
+# posterior draws from estimate_means() (keep_iterations = TRUE) and combine
+# them ourselves -- the draws themselves still come from {modelbased}/{easystats}.
+tau_means_draws <- as.data.frame(estimate_means(
+  fit_exp1_classical,
+  by = c("Condition", "PrimeDuration"),
+  predict = "tau",
+  centrality = "mean",
+  backend = "emmeans",
+  keep_iterations = TRUE
+))
+iter_cols <- grep("^iter_", names(tau_means_draws), value = TRUE)
+get_draws <- function(condition, duration) {
+  as.numeric(tau_means_draws[
+    tau_means_draws$Condition == condition &
+      tau_means_draws$PrimeDuration == duration,
+    iter_cols
+  ])
 }
-```
-
-```{r}
-#| label: estimate-mu-real
-#| echo: false
-
-mu_id_33 <- draws_exp1$b_Intercept - 0.5 * draws_exp1$b_Condition1 - 0.5 * draws_exp1$b_PrimeDuration1 + 0.25 * draws_exp1$`b_Condition1:PrimeDuration1`
-mu_un_33 <- draws_exp1$b_Intercept + 0.5 * draws_exp1$b_Condition1 - 0.5 * draws_exp1$b_PrimeDuration1 - 0.25 * draws_exp1$`b_Condition1:PrimeDuration1`
-mu_id_50 <- draws_exp1$b_Intercept - 0.5 * draws_exp1$b_Condition1 + 0.5 * draws_exp1$b_PrimeDuration1 - 0.25 * draws_exp1$`b_Condition1:PrimeDuration1`
-mu_un_50 <- draws_exp1$b_Intercept + 0.5 * draws_exp1$b_Condition1 + 0.5 * draws_exp1$b_PrimeDuration1 + 0.25 * draws_exp1$`b_Condition1:PrimeDuration1`
-
-real_mu_means <- rbind(
-  data.frame(Condition = "Identical", `Prime Duration` = "33 ms", Mean = mean(mu_id_33), SE = sd(mu_id_33), CI_low = quantile(mu_id_33, 0.025)[[1]], CI_high = quantile(mu_id_33, 0.975)[[1]], check.names = FALSE),
-  data.frame(Condition = "Unrelated", `Prime Duration` = "33 ms", Mean = mean(mu_un_33), SE = sd(mu_un_33), CI_low = quantile(mu_un_33, 0.025)[[1]], CI_high = quantile(mu_un_33, 0.975)[[1]], check.names = FALSE),
-  data.frame(Condition = "Identical", `Prime Duration` = "50 ms", Mean = mean(mu_id_50), SE = sd(mu_id_50), CI_low = quantile(mu_id_50, 0.025)[[1]], CI_high = quantile(mu_id_50, 0.975)[[1]], check.names = FALSE),
-  data.frame(Condition = "Unrelated", `Prime Duration` = "50 ms", Mean = mean(mu_un_50), SE = sd(mu_un_50), CI_low = quantile(mu_un_50, 0.025)[[1]], CI_high = quantile(mu_un_50, 0.975)[[1]], check.names = FALSE)
+tau_intx_draws <- (get_draws("Unrelated", "50 ms") -
+  get_draws("Identical", "50 ms")) -
+  (get_draws("Unrelated", "33 ms") - get_draws("Identical", "33 ms"))
+tau_intx <- data.frame(
+  Mean = mean(tau_intx_draws),
+  CI_low = quantile(tau_intx_draws, 0.025)[[1]],
+  CI_high = quantile(tau_intx_draws, 0.975)[[1]],
+  # tau_intx isn't from estimate_contrasts()/model_parameters(), so pd is
+  # computed directly from its draws via {bayestestR} (part of {easystats}).
+  pd = as.numeric(bayestestR::p_direction(tau_intx_draws))
 )
-```
 
-```{r}
-#| label: tbl-real-mu
-#| tbl-cap: "Estimated Gaussian-location parameter (\\\\mu) by condition and prime duration for Experiment 1 from @angele2023 under the classical model."
-#| echo: false
-#| results: asis
-tt(format_summary_table(real_mu_means))
-```
-
-```{r}
-#| label: contrast-mu-real
-#| echo: false
-
-d_mu_33 <- mu_un_33 - mu_id_33
-d_mu_50 <- mu_un_50 - mu_id_50
-b_mu_cond <- draws_exp1$b_Condition1
-b_mu_dur  <- draws_exp1$b_PrimeDuration1
-b_mu_intx <- draws_exp1$`b_Condition1:PrimeDuration1`
-
-real_mu_contrasts <- rbind(
-  data.frame(Effect = "Main Effect of Relatedness", Estimate = mean(b_mu_cond), SE = sd(b_mu_cond), CI_low = quantile(b_mu_cond, 0.025)[[1]], CI_high = quantile(b_mu_cond, 0.975)[[1]]),
-  data.frame(Effect = "Main Effect of Prime Duration", Estimate = mean(b_mu_dur), SE = sd(b_mu_dur), CI_low = quantile(b_mu_dur, 0.025)[[1]], CI_high = quantile(b_mu_dur, 0.975)[[1]]),
-  data.frame(Effect = "Relatedness × Prime Duration Interaction", Estimate = mean(b_mu_intx), SE = sd(b_mu_intx), CI_low = quantile(b_mu_intx, 0.025)[[1]], CI_high = quantile(b_mu_intx, 0.975)[[1]]),
-  data.frame(Effect = "Priming Effect at 33 ms", Estimate = mean(d_mu_33), SE = sd(d_mu_33), CI_low = quantile(d_mu_33, 0.025)[[1]], CI_high = quantile(d_mu_33, 0.975)[[1]]),
-  data.frame(Effect = "Priming Effect at 50 ms", Estimate = mean(d_mu_50), SE = sd(d_mu_50), CI_low = quantile(d_mu_50, 0.025)[[1]], CI_high = quantile(d_mu_50, 0.975)[[1]])
+# Effects as originally reported by @angele2023 under their default-brms
+# E(RT) parameterization (their Table 3); we did not refit their default model.
+default_ert <- c(
+  "31.5 [27.7, 35.3]",
+  "-10.9 [-14.5, -7.3]",
+  "19.3 [12.6, 26.0]",
+  "~22.0",
+  "~41.0"
 )
-```
 
-```{r}
-#| label: tbl-real-mu-contrast
-#| tbl-cap: "Fixed effects and priming contrasts in the Gaussian-location parameter (\\\\mu) for Experiment 1 from @angele2023 under the classical model."
-#| echo: false
-#| results: asis
-tt(format_summary_table(real_mu_contrasts))
-```
-
-As shown in @tbl-real-mu-contrast, under the classical parameterization, the true Gaussian location $\mu$ shows a robust overall main effect of relatedness ($28.5$, 95% CrI [$24.7, 32.4$]). Crucially, the main effect of prime duration on $\mu$ is **non-credible** ($-3.1$, 95% CrI [$-6.5, 0.2$], with the 95% CrI containing zero), in contrast to the location shift reported under the default parameterization. The model also reveals a credible positive interaction between relatedness and prime duration ($17.1$, 95% CrI [$10.5, 23.8$]), indicating that the priming effect on $\mu$ was significantly larger at 50 ms ($37.1$, 95% CrI [$31.9, 42.2$]) than at 33 ms ($20.0$, 95% CrI [$14.9, 25.0$]).
-
-### Exponential Component ($\tau$)
-
-@tbl-real-tau displays the estimated exponential mean $\tau$ across conditions, and @tbl-real-tau-contrast presents the corresponding fixed effects and priming contrasts.
-
-```{r}
-#| label: estimate-tau-real
-#| echo: false
-
-tau_id_33 <- exp(draws_exp1$b_tau_Intercept - 0.5 * draws_exp1$b_tau_Condition1 - 0.5 * draws_exp1$b_tau_PrimeDuration1 + 0.25 * draws_exp1$`b_tau_Condition1:PrimeDuration1`)
-tau_un_33 <- exp(draws_exp1$b_tau_Intercept + 0.5 * draws_exp1$b_tau_Condition1 - 0.5 * draws_exp1$b_tau_PrimeDuration1 - 0.25 * draws_exp1$`b_tau_Condition1:PrimeDuration1`)
-tau_id_50 <- exp(draws_exp1$b_tau_Intercept - 0.5 * draws_exp1$b_tau_Condition1 + 0.5 * draws_exp1$b_tau_PrimeDuration1 - 0.25 * draws_exp1$`b_tau_Condition1:PrimeDuration1`)
-tau_un_50 <- exp(draws_exp1$b_tau_Intercept + 0.5 * draws_exp1$b_tau_Condition1 + 0.5 * draws_exp1$b_tau_PrimeDuration1 + 0.25 * draws_exp1$`b_tau_Condition1:PrimeDuration1`)
-
-real_tau_means <- rbind(
-  data.frame(Condition = "Identical", `Prime Duration` = "33 ms", Mean = mean(tau_id_33), SE = sd(tau_id_33), CI_low = quantile(tau_id_33, 0.025)[[1]], CI_high = quantile(tau_id_33, 0.975)[[1]], check.names = FALSE),
-  data.frame(Condition = "Unrelated", `Prime Duration` = "33 ms", Mean = mean(tau_un_33), SE = sd(tau_un_33), CI_low = quantile(tau_un_33, 0.025)[[1]], CI_high = quantile(tau_un_33, 0.975)[[1]], check.names = FALSE),
-  data.frame(Condition = "Identical", `Prime Duration` = "50 ms", Mean = mean(tau_id_50), SE = sd(tau_id_50), CI_low = quantile(tau_id_50, 0.025)[[1]], CI_high = quantile(tau_id_50, 0.975)[[1]], check.names = FALSE),
-  data.frame(Condition = "Unrelated", `Prime Duration` = "50 ms", Mean = mean(tau_un_50), SE = sd(tau_un_50), CI_low = quantile(tau_un_50, 0.025)[[1]], CI_high = quantile(tau_un_50, 0.975)[[1]], check.names = FALSE)
-)
-```
-
-```{r}
-#| label: tbl-real-tau
-#| tbl-cap: "Estimated exponential component (\\\\tau) by condition and prime duration for Experiment 1 from @angele2023 under the classical model."
-#| echo: false
-#| results: asis
-tt(format_summary_table(real_tau_means))
-```
-
-```{r}
-#| label: contrast-tau-real
-#| echo: false
-
-d_tau_33 <- tau_un_33 - tau_id_33
-d_tau_50 <- tau_un_50 - tau_id_50
-b_tau_cond <- draws_exp1$b_tau_Condition1
-b_tau_dur  <- draws_exp1$b_tau_PrimeDuration1
-b_tau_intx <- draws_exp1$`b_tau_Condition1:PrimeDuration1`
-
-d_tau_main <- (tau_un_33 + tau_un_50) / 2 - (tau_id_33 + tau_id_50) / 2
-d_tau_dur  <- (tau_id_50 + tau_un_50) / 2 - (tau_id_33 + tau_un_33) / 2
-d_tau_intx <- (tau_un_50 - tau_id_50) - (tau_un_33 - tau_id_33)
-
-real_tau_contrasts <- rbind(
-  data.frame(Effect = "Main Effect of Relatedness", Estimate = mean(d_tau_main), SE = sd(d_tau_main), CI_low = quantile(d_tau_main, 0.025)[[1]], CI_high = quantile(d_tau_main, 0.975)[[1]]),
-  data.frame(Effect = "Main Effect of Prime Duration", Estimate = mean(d_tau_dur), SE = sd(d_tau_dur), CI_low = quantile(d_tau_dur, 0.025)[[1]], CI_high = quantile(d_tau_dur, 0.975)[[1]]),
-  data.frame(Effect = "Relatedness × Prime Duration Interaction", Estimate = mean(d_tau_intx), SE = sd(d_tau_intx), CI_low = quantile(d_tau_intx, 0.025)[[1]], CI_high = quantile(d_tau_intx, 0.975)[[1]]),
-  data.frame(Effect = "Priming Effect at 33 ms", Estimate = mean(d_tau_33), SE = sd(d_tau_33), CI_low = quantile(d_tau_33, 0.025)[[1]], CI_high = quantile(d_tau_33, 0.975)[[1]]),
-  data.frame(Effect = "Priming Effect at 50 ms", Estimate = mean(d_tau_50), SE = sd(d_tau_50), CI_low = quantile(d_tau_50, 0.025)[[1]], CI_high = quantile(d_tau_50, 0.975)[[1]])
-)
-```
-
-```{r}
-#| label: tbl-real-tau-contrast
-#| tbl-cap: "Fixed effects and priming contrasts in the exponential component (\\\\tau) for Experiment 1 from @angele2023 under the classical model."
-#| echo: false
-#| results: asis
-tt(format_summary_table(real_tau_contrasts))
-```
-
-For the exponential component $\tau$, the main effect of relatedness is small and non-credible ($3.0$, 95% CrI [$-1.9, 8.1$]), as is the interaction term ($2.1$, 95% CrI [$-8.0, 12.8$]; log scale $b = 0.022$). Consequently, simple priming differences at 33 ms ($2.0$, 95% CrI [$-5.4, 9.5$]) and 50 ms ($4.1$, 95% CrI [$-2.9, 11.2$]) remain non-credible, consistent with Forster's [-@forster1998pros] savings hypothesis. However, the model reveals a credible main effect of prime duration ($-9.2$, 95% CrI [$-14.7, -3.5$]; log scale $b = -0.085$, 95% CrI [$-0.137, -0.032$]), showing that increasing prime duration from 33 ms to 50 ms moderately compressed the exponential tail parameter $\tau$ (from $\sim 113\text{ ms}$ to $\sim 104\text{ ms}$).
-
-### Comparison with Angele et al. (2023)
-
-Comparing these classical ex-Gaussian estimates with those originally reported by @angele2023 highlights the practical consequences of model parameterization for theoretical inferences (@tbl-real-comparison).
-
-```{r}
-#| label: tbl-real-comparison
-#| tbl-cap: "Side-by-side comparison of estimated effects from Experiment 1 under the default brms parameterization (E(RT)) versus the classical parameterization (Gaussian location \\\\mu and exponential tail \\\\tau)."
-#| echo: false
-#| results: asis
-
-comparison_df <- data.frame(
-  Effect = c("Main Effect of Relatedness", "Main Effect of Prime Duration", "Relatedness × Prime Duration Interaction", "Priming Effect at 33 ms", "Priming Effect at 50 ms"),
-  `Default brms E(RT)` = c("31.5 [27.7, 35.3]", "-10.9 [-14.5, -7.3]", "19.3 [12.6, 26.0]", "~22.0", "~41.0"),
-  `Classical μ` = c("28.5 [24.7, 32.4]", "-3.1 [-6.5, 0.2]", "17.1 [10.5, 23.8]", "20.0 [14.9, 25.0]", "37.1 [31.9, 42.2]"),
-  `Classical τ` = c("3.0 [-1.9, 8.1]", "-9.2 [-14.7, -3.5]", "2.1 [-8.0, 12.8]", "2.0 [-5.4, 9.5]", "4.1 [-2.9, 11.2]"),
+real_contrasts_tbl <- data.frame(
+  Effect = c(
+    "Main Effect of Relatedness",
+    "Main Effect of Prime Duration",
+    "Relatedness x Prime Duration Interaction",
+    paste("Priming Effect at", mu_simple$PrimeDuration)
+  ),
+  `Default brms E(RT)` = default_ert,
+  Mu = fmt_num(c(
+    mu_main_cond$Difference,
+    mu_main_dur$Difference,
+    mu_intx$Mean,
+    mu_simple$Difference
+  )),
+  `Mu 95% CrI` = fmt_ci(
+    c(
+      mu_main_cond$CI_low,
+      mu_main_dur$CI_low,
+      mu_intx$CI_low,
+      mu_simple$CI_low
+    ),
+    c(
+      mu_main_cond$CI_high,
+      mu_main_dur$CI_high,
+      mu_intx$CI_high,
+      mu_simple$CI_high
+    )
+  ),
+  `Mu pd` = fmt_pd(c(
+    mu_main_cond$pd,
+    mu_main_dur$pd,
+    mu_intx$pd,
+    mu_simple$pd
+  )),
+  Tau = fmt_num(c(
+    tau_main_cond$Difference,
+    tau_main_dur$Difference,
+    tau_intx$Mean,
+    tau_simple$Difference
+  )),
+  `Tau 95% CrI` = fmt_ci(
+    c(
+      tau_main_cond$CI_low,
+      tau_main_dur$CI_low,
+      tau_intx$CI_low,
+      tau_simple$CI_low
+    ),
+    c(
+      tau_main_cond$CI_high,
+      tau_main_dur$CI_high,
+      tau_intx$CI_high,
+      tau_simple$CI_high
+    )
+  ),
+  `Tau pd` = fmt_pd(c(
+    tau_main_cond$pd,
+    tau_main_dur$pd,
+    tau_intx$pd,
+    tau_simple$pd
+  )),
   check.names = FALSE
 )
 
-tt(comparison_df)
+# Named lookup so in-text numbers are always pulled from the table above
+# rather than typed by hand.
+get_val <- function(effect, col) {
+  real_contrasts_tbl[real_contrasts_tbl$Effect == effect, col]
+}
+
+# Display-only: long format (one row per Effect x Parameter) instead of Mu/Tau
+# side by side. get_val() above still reads the wide table, so in-text prose
+# is unaffected.
+real_contrasts_display <- rbind(
+  data.frame(
+    Effect = real_contrasts_tbl$Effect,
+    `Default brms E(RT)` = real_contrasts_tbl$`Default brms E(RT)`,
+    Parameter = "μ",
+    Estimate = real_contrasts_tbl$Mu,
+    `95% CrI` = real_contrasts_tbl$`Mu 95% CrI`,
+    pd = real_contrasts_tbl$`Mu pd`,
+    check.names = FALSE
+  ),
+  data.frame(
+    Effect = real_contrasts_tbl$Effect,
+    `Default brms E(RT)` = real_contrasts_tbl$`Default brms E(RT)`,
+    Parameter = "τ",
+    Estimate = real_contrasts_tbl$Tau,
+    `95% CrI` = real_contrasts_tbl$`Tau 95% CrI`,
+    pd = real_contrasts_tbl$`Tau pd`,
+    check.names = FALSE
+  )
+)
+real_contrasts_display$Effect <- factor(
+  real_contrasts_display$Effect,
+  levels = real_contrasts_tbl$Effect
+)
+real_contrasts_display <- real_contrasts_display[
+  order(real_contrasts_display$Effect),
+]
+real_contrasts_display$Effect <- as.character(real_contrasts_display$Effect)
+rownames(real_contrasts_display) <- NULL
 ```
 
-1. **Parameter Interpretation**: @angele2023 reported fixed effects for relatedness, prime duration, and their interaction from default {brms} under the assumption that `mu` represented the Gaussian location component $\mu_{\text{Gaussian}}$. In reality, `brms` default `mu` estimates $E(RT) = \mu_{\text{Gaussian}} + \tau$. Consequently, @angele2023 reported overall distributional mean differences under the label of Gaussian location shifts.
+```{r}
+#| label: tbl-real-contrasts
+#| tbl-cap: "Fixed effects and priming contrasts in the Gaussian-location ($\\mu$) and exponential ($\\tau$) parameters for Experiment 1 from @angele2023 under the classical model, alongside the default-brms E(RT) effects as originally reported by @angele2023. All estimates are in milliseconds and reflect Unrelated minus Identical (or 50 ms minus 33 ms) differences; pd is the probability of direction."
+#| echo: false
+#| results: asis
+tt(real_contrasts_display)
+```
 
-2. **Divergent Conclusions on Prime Duration**: A critical theoretical discrepancy emerges regarding the main effect of prime duration. Based on their default {brms} model, @angele2023 concluded that increasing prime exposure duration from 33 ms to 50 ms produced a credible downward shift in the Gaussian location parameter $\mu$ ($b = -10.9\text{ ms}$, 95% CrI [$-14.5, -7.3$]). However, the classical parameterization reveals that the true main effect of prime duration on $\mu_{\text{Gaussian}}$ is **non-credible** ($-3.1\text{ ms}$, 95% CrI [$-6.5, 0.2$], with the 95% CrI containing zero). Instead, the overall reduction in RTs at 50 ms prime duration was driven almost entirely by a compression of the exponential tail $\tau$ ($-9.2\text{ ms}$, 95% CrI [$-14.7, -3.5$]; log scale $b = -0.085$, 95% CrI [$-0.137, -0.032$]). Because default {brms} models $E(RT) = \mu_{\text{Gaussian}} + \tau$, the $-10.9\text{ ms}$ effect reported by @angele2023 as a location shift was actually the composite sum of a non-credible $\mu$ shift ($-3.1\text{ ms}$) and a credible $\tau$ tail reduction ($-9.2\text{ ms}$).
+As shown in @tbl-real-contrasts, under the classical parameterization, the true Gaussian location $\mu$ shows a robust overall main effect of relatedness (`r get_val("Main Effect of Relatedness", "Mu")` ms, 95% CrI `r get_val("Main Effect of Relatedness", "Mu 95% CrI")`). Crucially, the main effect of prime duration on $\mu$ is **non-credible** (`r get_val("Main Effect of Prime Duration", "Mu")` ms, 95% CrI `r get_val("Main Effect of Prime Duration", "Mu 95% CrI")`, with the 95% CrI containing zero), in contrast to the location shift reported under the default parameterization. The model also reveals a credible interaction between relatedness and prime duration (`r get_val("Relatedness x Prime Duration Interaction", "Mu")` ms, 95% CrI `r get_val("Relatedness x Prime Duration Interaction", "Mu 95% CrI")`), indicating that the priming effect on $\mu$ was larger at 50 ms (`r get_val("Priming Effect at 50 ms", "Mu")` ms, 95% CrI `r get_val("Priming Effect at 50 ms", "Mu 95% CrI")`) than at 33 ms (`r get_val("Priming Effect at 33 ms", "Mu")` ms, 95% CrI `r get_val("Priming Effect at 33 ms", "Mu 95% CrI")`).
 
-3. **Priming Effects and Interaction**: For the priming manipulation, the main effect of relatedness on $\mu_{\text{Gaussian}}$ ($28.5\text{ ms}$, 95% CrI [$24.7, 32.4$]) and the positive interaction ($17.1\text{ ms}$, 95% CrI [$10.5, 23.8$]) closely mirror the $E(RT)$ effects reported by @angele2023 (main effect $\sim 31.5\text{ ms}$, interaction $\sim 19.3\text{ ms}$). The estimates for the two parameterizations align closely for the priming effect because $\tau$ showed no credible priming differences ($3.0\text{ ms}$, 95% CrI [$-1.9, 8.1$]). When $\Delta \tau \approx 0$, changes in the distributional mean $\Delta E(RT)$ track changes in the Gaussian location $\Delta \mu$ nearly 1-to-1.
+For the exponential component $\tau$, the main effect of relatedness is small and non-credible (`r get_val("Main Effect of Relatedness", "Tau")` ms, 95% CrI `r get_val("Main Effect of Relatedness", "Tau 95% CrI")`), as is the interaction term (`r get_val("Relatedness x Prime Duration Interaction", "Tau")` ms, 95% CrI `r get_val("Relatedness x Prime Duration Interaction", "Tau 95% CrI")`). Consequently, simple priming differences at 33 ms (`r get_val("Priming Effect at 33 ms", "Tau")` ms, 95% CrI `r get_val("Priming Effect at 33 ms", "Tau 95% CrI")`) and 50 ms (`r get_val("Priming Effect at 50 ms", "Tau")` ms, 95% CrI `r get_val("Priming Effect at 50 ms", "Tau 95% CrI")`) remain non-credible, consistent with Forster's [-@forster1998pros] savings hypothesis. However, the model reveals a credible main effect of prime duration (`r get_val("Main Effect of Prime Duration", "Tau")` ms, 95% CrI `r get_val("Main Effect of Prime Duration", "Tau 95% CrI")`), showing that increasing prime duration from 33 ms to 50 ms moderately compressed the exponential tail parameter $\tau$.
 
-4. **Methodological Takeaway**: This empirical comparison demonstrates that misinterpreting default {brms} parameters can lead to subtle misattributions regarding *which* distributional component is altered by an experimental manipulation. In @angele2023, a tail-shortening effect of prime duration ($\Delta \tau = -9.2\text{ ms}$) was attributed to the Gaussian location parameter (`mu`). Adopting the classical parameterization resolves this misattribution and ensures that theoretical claims align with the underlying distributional parameters.
+### Comparison with Angele et al. (2023)
+
+Comparing these classical ex-Gaussian estimates with those originally reported by @angele2023 (the "Default brms E(RT)" column of @tbl-real-contrasts) highlights the practical consequences of model parameterization for theoretical inferences.
+
+1.  **Parameter Interpretation**: @angele2023 reported fixed effects for relatedness, prime duration, and their interaction from default {brms} under the assumption that `mu` represented the Gaussian location component $\mu_{\text{Gaussian}}$. In reality, `brms` default `mu` estimates $E(RT) = \mu_{\text{Gaussian}} + \tau$. Consequently, @angele2023 reported overall distributional mean differences under the label of Gaussian location shifts.
+
+2.  **Divergent Conclusions on Prime Duration**: A critical theoretical discrepancy emerges regarding the main effect of prime duration. Based on their default {brms} model, @angele2023 concluded that increasing prime exposure duration from 33 ms to 50 ms produced a credible downward shift in the Gaussian location parameter $\mu$ ($b = -10.9$ ms, 95% CrI \[-14.5, -7.3\]). However, the classical parameterization reveals that the true main effect of prime duration on $\mu_{\text{Gaussian}}$ is **non-credible** (`r get_val("Main Effect of Prime Duration", "Mu")` ms, 95% CrI `r get_val("Main Effect of Prime Duration", "Mu 95% CrI")`, with the 95% CrI containing zero). Instead, the overall reduction in RTs at 50 ms prime duration was driven almost entirely by a compression of the exponential tail $\tau$ (`r get_val("Main Effect of Prime Duration", "Tau")` ms, 95% CrI `r get_val("Main Effect of Prime Duration", "Tau 95% CrI")`). Because default {brms} models $E(RT) = \mu_{\text{Gaussian}} + \tau$, the $-10.9$ ms effect reported by @angele2023 as a location shift was actually the composite sum of a non-credible $\mu$ shift (`r get_val("Main Effect of Prime Duration", "Mu")` ms) and a credible $\tau$ tail reduction (`r get_val("Main Effect of Prime Duration", "Tau")` ms).
+
+3.  **Priming Effects and Interaction**: For the priming manipulation, the main effect of relatedness on $\mu_{\text{Gaussian}}$ (`r get_val("Main Effect of Relatedness", "Mu")` ms, 95% CrI `r get_val("Main Effect of Relatedness", "Mu 95% CrI")`) and the interaction (`r get_val("Relatedness x Prime Duration Interaction", "Mu")` ms, 95% CrI `r get_val("Relatedness x Prime Duration Interaction", "Mu 95% CrI")`) closely mirror the $E(RT)$ effects reported by @angele2023 (main effect $\sim 31.5$ ms, interaction $\sim 19.3$ ms). The estimates for the two parameterizations align closely for the priming effect because $\tau$ showed no credible priming differences (`r get_val("Main Effect of Relatedness", "Tau")` ms, 95% CrI `r get_val("Main Effect of Relatedness", "Tau 95% CrI")`). When $\Delta \tau \approx 0$, changes in the distributional mean $\Delta E(RT)$ track changes in the Gaussian location $\Delta \mu$ nearly 1-to-1.
+
+4.  **Methodological Takeaway**: This empirical comparison demonstrates that misinterpreting default {brms} parameters can lead to subtle misattributions regarding *which* distributional component is altered by an experimental manipulation. In @angele2023, a tail-shortening effect of prime duration ($\Delta \tau =$ `r get_val("Main Effect of Prime Duration", "Tau")` ms) was attributed to the Gaussian location parameter (`mu`). Adopting the classical parameterization resolves this misattribution and ensures that theoretical claims align with the underlying distributional parameters.
 
 ## Conclusion
 
-With this commentary, I hope to encourage researchers to use the appropriate ex-Gaussian parameterization when modeling reaction-time data with the {brms} package. The ex-Gaussian distribution provides a powerful framework for moving beyond analyses of the mean by separating differences in the central portion of the reaction-time distribution from differences in its right tail.
+With this commentary, we hope to encourage researchers to use the appropriate ex-Gaussian parameterization when modeling reaction-time data with the {brms} package. The ex-Gaussian distribution provides a powerful framework for moving beyond analyses of the mean by separating differences in the central portion of the reaction-time distribution from differences in its right tail.
 
-However, this flexibility also requires careful attention to model parameterization. In particular, researchers should not assume that parameters with familiar labels necessarily have the same interpretation across software implementations. Researchers should therefore examine the statistical definition and underlying implementation of a model before fitting it and interpreting its parameters. This is especially important when using flexible modeling software that may adopt parameterizations that differ from those commonly used in a particular research literature. I hope this commentary serves both as a practical guide to fitting the classical ex-Gaussian model in {brms} and as a broader reminder that convenient software defaults should not replace careful consideration of what a model actually estimates.
+However, this flexibility also requires careful attention to model parameterization. In particular, researchers should not assume that parameters with familiar labels necessarily have the same interpretation across software implementations. Researchers should therefore examine the statistical definition and underlying implementation of a model before fitting it and interpreting its parameters. This is especially important when using flexible modeling software that may adopt parameterizations that differ from those commonly used in a particular research literature. We hope this commentary serves both as a practical guide to fitting the classical ex-Gaussian model in {brms} and as a broader reminder that convenient software defaults should not replace careful consideration of what a model actually estimates.
 
 # References
