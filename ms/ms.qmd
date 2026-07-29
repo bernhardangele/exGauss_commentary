@@ -143,6 +143,7 @@ library(tinytable)
 library(easystats)
 library(ggplot2)
 library(ggdist)
+library(patchwork)
 
 # Shared formatting helpers, reused when building the condensed (long-format)
 # tables: one row per condition/effect x parameter, with Greek symbols (μ, τ,
@@ -332,7 +333,7 @@ ggplot(d, aes(x = rt)) +
   ) +
   geom_text(
     data = annot,
-    aes(x = full_mean, y = -0.34, label = "entire distribution"),
+    aes(x = full_mean, y = -0.55, label = "entire distribution"),
     size = 3.3,
     colour = "grey30"
   ) +
@@ -569,6 +570,8 @@ default_means_tbl <- rbind(
 )
 default_means_tbl <- default_means_tbl[order(default_means_tbl$Blur), ]
 rownames(default_means_tbl) <- NULL
+default_means_tbl$Blur <- as.character(default_means_tbl$Blur)
+default_means_tbl$Blur[duplicated(default_means_tbl$Blur)] <- ""
 ```
 
 ```{r}
@@ -799,6 +802,8 @@ classical_means_tbl <- rbind(
 )
 classical_means_tbl <- classical_means_tbl[order(classical_means_tbl$Blur), ]
 rownames(classical_means_tbl) <- NULL
+classical_means_tbl$Blur <- as.character(classical_means_tbl$Blur)
+classical_means_tbl$Blur[duplicated(classical_means_tbl$Blur)] <- ""
 ```
 
 ```{r}
@@ -877,6 +882,103 @@ tt(classical_contrast_tbl)
 The results seen in @tbl-classical-contrast are very similar to the default paramaterization for $\tau$, but unlike the default model, the classical model's $\mu$ contrast directly recovers the simulated 50-ms shift in the Gaussian location.
 
 This example illustrates the central difference between the two parameterizations. The default {**`brms`**} ex-Gaussian model directly estimates the expected response and labels that parameter `mu`. The exponential component is labeled `beta`, although it corresponds to the classical $\tau$ parameter. In contrast, the `{cogmod}`'s `rt_exgaussian()` model uses `mu` for the Gaussian-location parameter and `tau` for the exponential mean, consistent with the classical parameterization commonly used in reaction-time research.
+
+@fig-abstract summarizes this simulation in a single picture: the two simulated distributions differ by 50 ms in the Gaussian location $\mu$, but only the classical parameterization's contrast on $\mu$ detects that difference — the default {brms} model's contrast (on $E(RT)$) does not.
+
+```{r}
+#| label: fig-abstract
+#| fig-cap: "Graphical summary of the Simulation Example. Top: simulated reaction-time distributions for the Clear and Low-Blur conditions, which differ by 50 ms in the Gaussian location $\\mu$. Bottom: the Blur contrast under each parameterization, with credibility determined by whether the 95% credible interval excludes zero; pd is the probability of direction."
+#| echo: false
+#| fig-width: 7
+#| fig-height: 6.5
+
+mu_lookup <- data.frame(Blur = c("Clear", "Low-Blur"), mu = sim_params$mu)
+
+# Single (non-faceted) panel with both densities overlapping, so the Delta-mu
+# arrow can span between them without ggplot's per-facet annotate() duplication.
+p_dist <- ggplot(d, aes(x = rt, fill = Blur, colour = Blur)) +
+  ggdist::stat_slab(alpha = 0.55, linewidth = 0, normalize = "panels") +
+  geom_vline(
+    data = mu_lookup, aes(xintercept = mu, colour = Blur),
+    linetype = "dashed", linewidth = 0.7, show.legend = FALSE
+  ) +
+  annotate(
+    "segment",
+    x = min(mu_lookup$mu), xend = max(mu_lookup$mu), y = 1.15, yend = 1.15,
+    arrow = grid::arrow(length = grid::unit(1.6, "mm"), ends = "both"),
+    linewidth = 0.6, colour = "grey20"
+  ) +
+  annotate(
+    "text",
+    x = mean(mu_lookup$mu), y = 1.25,
+    label = paste0("Δμ = ", diff(range(mu_lookup$mu)), " ms"),
+    size = 4.4, fontface = "bold", colour = "grey20"
+  ) +
+  scale_fill_manual(values = c("Clear" = "darkgreen", "Low-Blur" = "darkred")) +
+  scale_colour_manual(values = c("Clear" = "darkgreen", "Low-Blur" = "darkred")) +
+  coord_cartesian(xlim = c(300, 900), ylim = c(0, 1.4), clip = "off") +
+  labs(x = "Reaction time (ms)", y = NULL, title = "Simulated Distributions (μ differs by 50 ms)", fill = NULL, colour = NULL) +
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    panel.grid = element_blank(),
+    legend.position = "top",
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 12)
+  )
+
+# Verdict boxes: pull the actual Blur contrast from each fitted model rather
+# than hardcoding the estimate/CI/credibility.
+default_mu_contrast   <- as.data.frame(overall_difference)
+classical_mu_contrast <- as.data.frame(mu_difference)
+
+# pd >= .975 is the conventional threshold (roughly equivalent to a two-sided
+# 95% credible interval excluding zero) for treating a direction as credible.
+pd_threshold <- 0.975
+is_credible <- function(pd) pd >= pd_threshold
+verdict_label <- function(est, pd) {
+  if (pd < pd_threshold) "UNCERTAIN" else if (est > 0) "EFFECT ABOVE 0" else "EFFECT BELOW 0"
+}
+
+make_verdict_box <- function(title, est, ci_low, ci_high, pd, credible) {
+  txt <- paste0(
+    title, "\n",
+    "Δ = ", fmt_num(est), " ms   95% CrI ", fmt_ci(ci_low, ci_high), "   pd = ", fmt_pd(pd), "\n",
+    verdict_label(est, pd)
+  )
+  fill_colour <- if (credible) "#d4edda" else "#f0f0f0"
+  ggplot() +
+    annotate("rect", xmin = 0, xmax = 1, ymin = 0, ymax = 1, fill = fill_colour, colour = "grey30", linewidth = 0.8) +
+    annotate("text", x = 0.5, y = 0.5, label = txt, size = 3.8, fontface = "bold", lineheight = 1.3, colour = "grey10") +
+    theme_void() +
+    coord_cartesian(xlim = c(0, 1), ylim = c(0, 1), expand = FALSE, clip = "off")
+}
+
+p_default_box <- make_verdict_box(
+  "Default {brms}\n(μ = E(RT))",
+  default_mu_contrast$Mean, default_mu_contrast$CI_low, default_mu_contrast$CI_high, default_mu_contrast$pd,
+  is_credible(default_mu_contrast$pd)
+)
+
+p_classical_box <- make_verdict_box(
+  "Classical ex-Gaussian\n(μ = Gaussian location)",
+  classical_mu_contrast$Mean, classical_mu_contrast$CI_low, classical_mu_contrast$CI_high, classical_mu_contrast$pd,
+  is_credible(classical_mu_contrast$pd)
+)
+
+p_banner <- ggplot() +
+  annotate("rect", xmin = 0, xmax = 1, ymin = 0, ymax = 1, fill = "#fff3cd", colour = "grey30", linewidth = 0.8) +
+  annotate(
+    "text", x = 0.5, y = 0.5,
+    label = "The default {brms} family does not capture the difference in μ!",
+    size = 5, fontface = "bold", colour = "#664d03"
+  ) +
+  theme_void() +
+  coord_cartesian(xlim = c(0, 1), ylim = c(0, 1), expand = FALSE)
+
+p_dist / (p_default_box | p_classical_box) / p_banner +
+  patchwork::plot_layout(heights = c(2.2, 0.8, 0.5))
+```
 
 ## Real Example
 
@@ -1086,6 +1188,12 @@ real_means_tbl <- real_means_tbl[
   order(real_means_tbl$Condition, real_means_tbl$PrimeDuration),
 ]
 rownames(real_means_tbl) <- NULL
+real_means_tbl$Condition <- as.character(real_means_tbl$Condition)
+real_means_tbl$PrimeDuration <- as.character(real_means_tbl$PrimeDuration)
+dup_duration <- duplicated(real_means_tbl[c("Condition", "PrimeDuration")])
+dup_condition <- duplicated(real_means_tbl$Condition)
+real_means_tbl$PrimeDuration[dup_duration] <- ""
+real_means_tbl$Condition[dup_condition] <- ""
 ```
 
 ```{r}
