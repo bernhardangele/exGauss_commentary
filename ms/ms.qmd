@@ -652,6 +652,8 @@ As we have shown above, the default paramterization gives you the exected RT of 
 
 In {cogmod}, all three parameters use a softplus link by default, rather than the identity or log links {brms} typically applies. An identity link would let the linear predictor cross zero, which is invalid for all three parameters, since $\mu$ must stay positive to represent a genuine RT-scale location, and $\sigma$ and $\tau$ are positive by definition. A log link would also enforce positivity, but its curvature grows sharply away from zero, producing extreme gradients that make priors hard to calibrate. Softplus keeps the positivity constraint but behaves almost linearly away from zero, so priors can be specified directly on the response scale.
 
+This near-identity behavior holds only in the positive direction, and only once the linear predictor is comfortably greater than zero: $\text{softplus}(x) = \log(1+e^x) \to x$ as $x \to \infty$, but $\text{softplus}(x) \to 0$ as $x \to -\infty$, so the link is sharply nonlinear for negative or near-zero linear predictors (e.g., $\text{softplus}(-2) \approx 0.13$, nothing like $-2$). Whether a response-scale prior lands in the near-linear region therefore depends on the measurement scale of the outcome, not just the link function itself. In the simulated example above, $\mu$, $\sigma$, and $\tau$ are specified in milliseconds (e.g., 500, 100, 60), so the linear predictor needed to reproduce those values is itself large and positive, safely inside the near-linear region. This does not automatically hold at other measurement scales — see the note on the real-data model's priors below, where reaction time is coded in seconds rather than milliseconds.
+
 At the sampling level, the log-likelihood is written in Stan and calls the built-in `exp_mod_normal_lpdf()` function^[<https://github.com/DominiqueMakowski/cogmod/blob/4b10ea5e00e02984d39c0749adf8dc0b9c4ab15b/R/rt_exgaussian_brms.R#L30-L37>], which implements the exponentially modified Gaussian density. That built-in function is parameterized by the rate of the exponential component rather than its mean, so $\tau$ is converted internally via $1/\tau$ before being passed in. The custom family simply relabels and re-links Stan's existing exponentially modified Gaussian implementation.
 
 ### Prior Specification
@@ -992,6 +994,8 @@ To fit their ex-Gaussian models, @angele2023 used the built-in `exgaussian()` fa
 
 Here, we apply the classical ex-Gaussian parameterization using `{cogmod}`, modeling reaction times with maximal random intercepts and random slopes for participants (`source`) and items (`Target`) across both $\mu$ (Gaussian location) and $\tau$ (exponential mean).
 
+Reaction time is coded in seconds (not milliseconds) in this dataset. As discussed above, `rt_exgaussian()`'s softplus link behaves near-linearly only for linear predictors that are comfortably positive; on a seconds scale, the expected values of $\mu$, $\tau$, and $\sigma$ are themselves small (well under 1), so the corresponding linear predictors sit in the curved part of the softplus rather than the near-linear part. The priors below are specified on this seconds scale accordingly, and the same caveat applies to reading the raw model coefficients directly: back-transforming them individually with softplus, rather than via `estimate_means()`/`estimate_contrasts()`, will not reproduce condition-specific estimates correctly, because softplus is nonlinear and effects on different predictors cannot be back-transformed and then summed.
+
 Prior specification for the classical model is summarized in @tbl-priors-real.
 
 ```{r}
@@ -999,24 +1003,24 @@ Prior specification for the classical model is summarized in @tbl-priors-real.
 #| eval: false
 #| echo: false
 priors_classical <- c(
-  # Gaussian location mu: Intercept & effects
-  prior(normal(500, 100), class = "Intercept"),
-  prior(normal(0, 100), class = "b", coef = "Condition1"),
-  prior(normal(0, 100), class = "b", coef = "PrimeDuration1"),
-  prior(normal(0, 100), class = "b", coef = "Condition1:PrimeDuration1"),
+  # Gaussian location mu: Intercept & effects (seconds scale)
+  prior(normal(0.5, 0.1), class = "Intercept"),
+  prior(normal(0, 0.1), class = "b", coef = "Condition1"),
+  prior(normal(0, 0.1), class = "b", coef = "PrimeDuration1"),
+  prior(normal(0, 0.1), class = "b", coef = "Condition1:PrimeDuration1"),
 
   # Exponential tail tau (response scale, via cogmod's softplus link): Intercept & effects
-  prior(normal(100, 50), class = "Intercept", dpar = "tau"),
-  prior(normal(0, 50), class = "b", dpar = "tau"),
+  prior(normal(0.1, 0.05), class = "Intercept", dpar = "tau"),
+  prior(normal(0, 0.05), class = "b", dpar = "tau"),
 
   # Gaussian SD sigma (response scale): Intercept
-  prior(normal(60, 30), class = "Intercept", dpar = "sigma")
+  prior(normal(0.06, 0.03), class = "Intercept", dpar = "sigma")
 )
 ```
 
 ```{r}
 #| label: tbl-priors-real
-#| tbl-cap: "Prior specification for the classical ex-Gaussian model fit to Experiment 1 from @angele2023."
+#| tbl-cap: "Prior specification (in seconds) for the classical ex-Gaussian model fit to Experiment 1 from @angele2023."
 #| echo: false
 #| results: asis
 priors_table_real <- data.frame(
@@ -1030,13 +1034,13 @@ priors_table_real <- data.frame(
     "Intercept (σ)"
   ),
   Prior = c(
-    "Normal(500, 100)",
-    "Normal(0, 100)",
-    "Normal(0, 100)",
-    "Normal(0, 100)",
-    "Normal(100, 50)",
-    "Normal(0, 50)",
-    "Normal(60, 30)"
+    "Normal(0.5, 0.1)",
+    "Normal(0, 0.1)",
+    "Normal(0, 0.1)",
+    "Normal(0, 0.1)",
+    "Normal(0.1, 0.05)",
+    "Normal(0, 0.05)",
+    "Normal(0.06, 0.03)"
   )
 )
 tt(priors_table_real)
@@ -1063,13 +1067,13 @@ N_target <- length(unique(data_fit$Target))
 # Function generating stable initial values for all Stan parameters
 init_classical <- function() {
   list(
-    Intercept = 500, # Gaussian location
-    Intercept_sigma = 60, # Gaussian SD (response scale, softplus link)
-    Intercept_tau = 100, # Exponential tail (response scale, softplus link)
+    Intercept = 0.5, # Gaussian location (seconds)
+    Intercept_sigma = 0.06, # Gaussian SD (response scale, softplus link)
+    Intercept_tau = 0.1, # Exponential tail (response scale, softplus link)
     b = rep(0, 3), # Fixed effects on mu
     b_tau = rep(0, 3), # Fixed effects on tau
-    sd_1 = rep(30, 4), # Participant SDs for mu (ms)
-    sd_2 = rep(30, 4), # Item SDs for mu (ms)
+    sd_1 = rep(0.03, 4), # Participant SDs for mu (seconds)
+    sd_2 = rep(0.03, 4), # Item SDs for mu (seconds)
     sd_3 = rep(0.1, 4), # Participant SDs for tau (small to prevent overflow)
     sd_4 = rep(0.1, 4), # Item SDs for tau (small to prevent overflow)
     z_1 = matrix(0, nrow = 4, ncol = N_source), # Participant random effects for mu
