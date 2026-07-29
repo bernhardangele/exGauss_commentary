@@ -1,19 +1,21 @@
 # final_data_analyses_brms_classical_exp1.R
-# Applies the classical ex-Gaussian parameterization (via {brms.exgaussian}) to Exp 1 RT data.
-# This script is prepared according to the Geller methodology described in ms.qmd.
+# Applies the classical ex-Gaussian parameterization (via {cogmod}) to Exp 1 RT data.
+# This script is prepared according to the methodology described in ms.qmd.
 # Reference: Angele et al. (2022) Experiment 1
 
 library(tidyverse)
 library(brms)
-library(brms.exgaussian)
+library(cogmod)
 library(qs2)
 
 # -------------------------------------------------------------------------
-# 1. Setup Custom Classical Ex-Gaussian Family
+# 1. Setup Classical Ex-Gaussian Family ({cogmod})
 # -------------------------------------------------------------------------
-# Setup custom ex-Gaussian Stan functions and family definition.
-exg_stanvars <- exgaussian2_stancode()
-exg_family <- exgaussian2()
+# Uses cogmod's rt_exgaussian() family and rt_exgaussian_stanvars().
+# In this classical parameterization:
+#   - mu is the location parameter of the Gaussian component (identity link)
+#   - tau is the mean of the exponential component (softplus link, response scale)
+#   - sigma is the SD of the Gaussian component (softplus link, response scale)
 
 # -------------------------------------------------------------------------
 # 2. Load and Filter Exp 1 Data
@@ -71,10 +73,10 @@ contrasts(exp1_data_to_include$PrimeDuration) <- c(-.5, .5)
 # -------------------------------------------------------------------------
 # 4. Prior Specification
 # -------------------------------------------------------------------------
-# Setting priors for the classical model:
+# Setting priors for the classical model (via {cogmod}):
 #   - mu submodel (identity link): typical RT intercept centered around 500 ms, effects centered around 0.
-#   - tau submodel (log link): log(intercept) centered around log(100), effects centered around 0.
-#   - sigma submodel (log link): log(intercept) centered around log(60).
+#   - tau submodel (softplus link): response scale intercept centered around 100 ms, effects centered around 0.
+#   - sigma submodel (softplus link): response scale intercept centered around 60 ms.
 priors_classical <- c(
   # Gaussian location mu: Intercept & effects
   prior(normal(500, 100), class = "Intercept"),
@@ -82,12 +84,12 @@ priors_classical <- c(
   prior(normal(0, 100), class = "b", coef = "PrimeDuration1"),
   prior(normal(0, 100), class = "b", coef = "Condition1:PrimeDuration1"),
   
-  # Exponential tail tau (on log scale): Intercept & effects
-  prior(normal(log(100), 0.5), class = "Intercept", dpar = "tau"),
-  prior(normal(0, 0.5), class = "b", dpar = "tau"),
+  # Exponential tail tau (response scale, via cogmod's softplus link): Intercept & effects
+  prior(normal(100, 50), class = "Intercept", dpar = "tau"),
+  prior(normal(0, 50), class = "b", dpar = "tau"),
   
-  # Gaussian SD sigma (on log scale): Intercept
-  prior(normal(log(60), 0.5), class = "Intercept", dpar = "sigma")
+  # Gaussian SD sigma (response scale): Intercept
+  prior(normal(60, 30), class = "Intercept", dpar = "sigma")
 )
 
 # -------------------------------------------------------------------------
@@ -103,21 +105,19 @@ N_source <- length(unique(data_fit$source))
 N_target <- length(unique(data_fit$Target))
 
 # A complete function to generate sensible initial values for all parameters.
-# Standard random initialization can draw massive standard deviations on the log scale
-# (e.g. for tau, exp(7.3) ≈ 1400x multiplier), which overflows/underflows the likelihood.
 # We initialize all intercepts, coefficients, standard deviations, standardized random effects,
 # and Cholesky correlation factors to highly stable starting values.
 init_classical <- function() {
   list(
     Intercept = 500,        # Gaussian location component (identity link)
-    Intercept_sigma = log(60), # Gaussian SD (log link)
-    Intercept_tau = log(100),  # Exponential tail (log link)
+    Intercept_sigma = 60,   # Gaussian SD (response scale, softplus link)
+    Intercept_tau = 100,    # Exponential tail (response scale, softplus link)
     b = rep(0, 3),          # Population-level effects on mu
     b_tau = rep(0, 3),      # Population-level effects on tau
     sd_1 = rep(30, 4),      # Subject-level SDs for mu (identity scale, in ms)
     sd_2 = rep(30, 4),      # Target-level SDs for mu (identity scale, in ms)
-    sd_3 = rep(0.1, 4),     # Subject-level SDs for tau (log scale, small to prevent overflow)
-    sd_4 = rep(0.1, 4),     # Target-level SDs for tau (log scale, small to prevent overflow)
+    sd_3 = rep(0.1, 4),     # Subject-level SDs for tau (small to prevent overflow)
+    sd_4 = rep(0.1, 4),     # Target-level SDs for tau (small to prevent overflow)
     z_1 = matrix(0, nrow = 4, ncol = N_source),  # Standardized random effects for source (mu)
     z_2 = matrix(0, nrow = 4, ncol = N_target),  # Standardized random effects for Target (mu)
     z_3 = matrix(0, nrow = 4, ncol = N_source),  # Standardized random effects for source (tau)
@@ -147,10 +147,9 @@ blmm_exp1_classical_rt <- brm(
   iter = 5000,
   chains = 4,
   prior = priors_classical,
-  family = exg_family,
-  stanvars = exg_stanvars,
+  family = rt_exgaussian(),
+  stanvars = rt_exgaussian_stanvars(),
   inits = init_classical,
-  #control = list(adapt_delta = 0.95),
   cores = 4, 
   backend = "cmdstanr", 
   threads = threading(2)
