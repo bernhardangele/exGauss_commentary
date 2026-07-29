@@ -114,6 +114,8 @@ To demonstrate the issue with fitting the default ex-Gaussian model in {brms}, I
 #| echo: false
 #| message: false
 #| warning: false
+library(tidyverse)
+library(fs)
 library(brms)
 library(brms.exgaussian)
 library(ragg)
@@ -524,7 +526,7 @@ As we can see in @tbl-default-beta-contrast, the differnce between the two condi
 
 ## Classical Ex-Gaussian Parameterization
 
-As we have shown above, the default paramterization gives you the expected RT of the entire distribution. We can instead fit the model using the `{brms.exgaussian}` package, which implements the classical ex-Gaussian parameterization. In this model, $\mu$ represents the location of the Gaussian component and $\tau$ represents the mean of the exponential component.
+As we have shown above, the default parameterization gives you the expected RT of the entire distribution. We can instead fit the model using the `{brms.exgaussian}` package, which implements the classical ex-Gaussian parameterization. In this model, $\mu$ represents the location of the Gaussian component and $\tau$ represents the mean of the exponential component.
 
 We first define the custom family and Stan functions from the {brms.exgaussian} package:
 
@@ -707,11 +709,71 @@ This example illustrates the central difference between the two parameterization
 
 ## Real Example
 
-In order to demonstrate the how the difference between parameterizations can affect the intepretation of real data, we re-analyze Experiment 1 from @angele2023. The main focus of @angele2023's study was to test whether the masked priming paradigm can be successfully implemented in a Javascript-based online experiment. However @angele2023 also attempt to make a theoretical contribution by using the ex-Gaussian model to evaluate @forster1998pros's savings hypothesis. @forster1998pros argued that, if the prime is identical to the target, having pre-processed the prime will allow participants to respond faster. In this case, the whole distribution of reaction times should be shifted to the left for the related condition compaed to the unrelated condition, i.e., there should be an effec ton $\mu$, rather than on the slower responses, i.e., $\tau$. The experiment had a more complex design than the previous examples: participants completed a masked identity priming lexical decision task across two prime exposure durations (33 ms vs. 50 ms) and two priming conditions (Identical vs. Unrelated).
+In order to demonstrate the how the difference between parameterizations can affect the intepretation of real data, we re-analyze Experiment 1 from @angele2023. The main focus of @angele2023's study was to test whether the masked priming paradigm can be successfully implemented in a Javascript-based online experiment. However @angele2023 also attempt to make a theoretical contribution by using the ex-Gaussian model to evaluate @forster1998pros's savings hypothesis. @forster1998pros argued that, if the prime is identical to the target, having pre-processed the prime will allow participants to respond faster. In this case, the whole distribution of reaction times should be shifted to the left for the related condition compaed to the unrelated condition, i.e., there should be an effect on $\mu$, rather than only on the slower responses, i.e., $\tau$. The experiment had a more complex design than the previous examples: participants completed a masked identity priming lexical decision task across two prime exposure durations (33 ms vs. 50 ms) and two priming conditions (Identical vs. Unrelated). Descriptive statistics for response times and accuracy for word targets across experimental conditions are reported in @tbl-exp1-descriptive-rt.
 
-To fit their ex-Gaussian models, @angele2023 used the built-in `exgaussian()` family in {brms}. As established above, the primary formula in default {brms} models the overall distributional mean $E(RT) = \mu_{\text{Gaussian}} + \tau$, despite assigning the label `mu` to this parameter. In their manuscript, @angele2023 interpreted regression effects on `mu` as changes in the location of the Gaussian component $\mu$.
+```{r}
+#| label: tbl-exp1-descriptive-rt
+#| tbl-cap: "Mean, Median, Standard Deviation (SD), range of correct RTs (in ms) and Accuracy (proportion of correct responses) for word targets in Experiment 1 in each condition."
+#| echo: false
+#| results: asis
 
-Here, we apply the classical ex-Gaussian parameterization using `{brms.exgaussian}`, modeling reaction times with maximal random intercepts and random slopes for participants (`source`) and items (`Target`) across both $\mu$ (Gaussian location) and $\tau$ (exponential mean).
+library(tidyverse)
+library(fs)
+
+angele_dir <- if (dir.exists("Angele_et_al_2022")) "Angele_et_al_2022" else "../Angele_et_al_2022"
+exp1_all_participants <- read_csv(file.path(angele_dir, "participant_data_exp1.csv"), show_col_types = FALSE)
+
+exp1 <- fs::dir_ls(path = file.path(angele_dir, "data_exp1"), glob = "*.csv") %>%
+  map_dfr(read_csv, .id = "source", col_type = cols(
+    .default = col_character(), rt = col_double(), corr = col_integer(), TrialID = col_integer()
+  )) %>% 
+  filter(!is.na(TrialID) & TrialID < 1000) %>%
+  select(source, participant, date, OS, frameRate, rt, corr, TrialID, StimulusType, Condition, PrimeDuration, Prime, Target)
+
+exp1$device <- ifelse(exp1$OS %in% c("Linux armv7l", "Linux armv8l"), "android", "computer")
+
+exp1_actual_participants <- filter(exp1_all_participants, (PROLIFIC_PID %in% exp1$participant) & (nchar(PROLIFIC_PID) == 24) & !(PROLIFIC_PID %in% c("5fa3b4abbcfd0b6c243758bc")) & (`What is your age?` != 99) & (`Response ID` != "R_sU4qJ6UCe9jRKs9"))
+
+exp1_accuracy_by_participant <- exp1 %>% filter(participant %in% exp1_actual_participants$PROLIFIC_PID) %>% group_by(source) %>% summarise(acc = mean(corr == 1), N = n())
+
+exp1_participants_to_include <- exp1_accuracy_by_participant %>% filter(N == 480 & acc >= .8)
+
+exp1_data_to_include <- exp1 %>% 
+  filter(source %in% exp1_participants_to_include$source & participant %in% exp1_actual_participants$PROLIFIC_PID) %>% 
+  mutate(
+    StimulusType = StimulusType %>% factor(levels = c("NW", "WORD"), labels = c("Nonword", "Word")), 
+    Relatedness = Condition %>% factor(levels = c("ID", "UN"), labels = c("Identical", "Unrelated")), 
+    PrimeDuration = PrimeDuration %>% factor(levels = c(33, 50), labels = c("33.3 ms", "50 ms")), 
+    rt = rt * 1000
+  )
+
+exp1_descriptives_rt <- exp1_data_to_include %>%
+  filter(StimulusType == "Word" & rt > 250 & rt <= 1800 & corr == 1) %>%
+  group_by(PrimeDuration, Relatedness) %>%
+  summarize(
+    Mean = round(mean(rt)),
+    Median = round(median(rt)),
+    SD = round(sd(rt)),
+    Min = round(min(rt)),
+    Max = round(max(rt)),
+    .groups = "drop"
+  )
+
+exp1_descriptives_corr <- exp1_data_to_include %>%
+  filter(StimulusType == "Word" & rt > 250 & rt <= 1800) %>%
+  group_by(PrimeDuration, Relatedness) %>%
+  summarize(
+    Accuracy = sprintf("%.2f", mean(corr)),
+    .groups = "drop"
+  )
+
+exp1_descriptives_rt$Accuracy <- exp1_descriptives_corr$Accuracy
+colnames(exp1_descriptives_rt)[1] <- "Prime Duration"
+
+tt(exp1_descriptives_rt)
+```
+
+In the original study, @angele2023 applied the default {**`brms`**} ex-Gaussian model, erroneously reporting the first parameter $\mu$ as the mean of the Gaussian component instead of $E(RT)$. While this did not affect the main conclusions of the study, which demonstrated that masked priming was indeed feasible in a Javascript-based online experiment, it could be argued that the interpretation of the results with regards to @forster1998pros's savings hypothesis may have been affected by this misinterpretation. Here, we apply the classical ex-Gaussian parameterization using `{brms.exgaussian}`, modeling reaction times with maximal random intercepts and random slopes for participants (`source`) and items (`Target`) across both $\mu$ (Gaussian location) and $\tau$ (exponential mean).
 
 Prior specification for the classical model:
 
@@ -736,9 +798,7 @@ priors_classical <- c(
 
 ### Initial Values Specification
 
-When fitting complex hierarchical ex-Gaussian models with random effects on parameters that use log link functions (such as $\tau$ and $\sigma$), Stan's default unconstrained random initialization (in $[-2, 2]$) can cause severe numerical instability. On the log scale, standard deviations randomly drawn near upper bounds (e.g., $e^2 \approx 7.38$) can generate extreme individual-level parameter deviations (e.g., $e^{10} \approx 22{,}000\text{ ms}$), causing MCMC chains to immediately reject initial values (`log probability evaluates to log(0)`) or fail to start.
-
-To prevent initial value rejection and ensure reliable sampling across all chains, we supply an explicit initialization function (`init_classical`) that sets reasonable starting values for all model parameters:
+When no initial values are provided, Stan will randomly generate starting values between -2 and 2 from a uniform distribution. However, in complex hierarchical models, this can sometimes lead to extreme initial values that may be rejected by the sampler or cause slow convergence. Because of this, we use an explicit initialization function (`init_classical`) that sets reasonable starting values^[$\mu = 500\text{ ms}$ for the Gaussian location intercept, $\log(\sigma) = \log(60)$ for the Gaussian standard deviation, and $\log(\tau) = \log(100)$ for the mean of the exponential component. All fixed effects are initialized to 0, participant and item random intercept standard deviations are set to a small number (30 for $\mu$) and (0.1 for $\tau$), all standardized random effects are initialized to 0, and Cholesky correlation matrices are initialized to identity matrices.] for all model parameters. It is important to note that, unlike the priors, these initial values will not influence the posterior distribution. They are simply used to help the sampler start in a reasonable region of the parameter space.
 
 ```{r}
 #| label: inits-real-exp1
@@ -848,10 +908,10 @@ mu_id_50 <- draws_exp1$b_Intercept - 0.5 * draws_exp1$b_Condition1 + 0.5 * draws
 mu_un_50 <- draws_exp1$b_Intercept + 0.5 * draws_exp1$b_Condition1 + 0.5 * draws_exp1$b_PrimeDuration1 + 0.25 * draws_exp1$`b_Condition1:PrimeDuration1`
 
 real_mu_means <- rbind(
-  data.frame(Condition = "Identical", PrimeDuration = "33 ms", Mean = mean(mu_id_33), SE = sd(mu_id_33), CI_low = quantile(mu_id_33, 0.025)[[1]], CI_high = quantile(mu_id_33, 0.975)[[1]]),
-  data.frame(Condition = "Unrelated", PrimeDuration = "33 ms", Mean = mean(mu_un_33), SE = sd(mu_un_33), CI_low = quantile(mu_un_33, 0.025)[[1]], CI_high = quantile(mu_un_33, 0.975)[[1]]),
-  data.frame(Condition = "Identical", PrimeDuration = "50 ms", Mean = mean(mu_id_50), SE = sd(mu_id_50), CI_low = quantile(mu_id_50, 0.025)[[1]], CI_high = quantile(mu_id_50, 0.975)[[1]]),
-  data.frame(Condition = "Unrelated", PrimeDuration = "50 ms", Mean = mean(mu_un_50), SE = sd(mu_un_50), CI_low = quantile(mu_un_50, 0.025)[[1]], CI_high = quantile(mu_un_50, 0.975)[[1]])
+  data.frame(Condition = "Identical", `Prime Duration` = "33 ms", Mean = mean(mu_id_33), SE = sd(mu_id_33), CI_low = quantile(mu_id_33, 0.025)[[1]], CI_high = quantile(mu_id_33, 0.975)[[1]], check.names = FALSE),
+  data.frame(Condition = "Unrelated", `Prime Duration` = "33 ms", Mean = mean(mu_un_33), SE = sd(mu_un_33), CI_low = quantile(mu_un_33, 0.025)[[1]], CI_high = quantile(mu_un_33, 0.975)[[1]], check.names = FALSE),
+  data.frame(Condition = "Identical", `Prime Duration` = "50 ms", Mean = mean(mu_id_50), SE = sd(mu_id_50), CI_low = quantile(mu_id_50, 0.025)[[1]], CI_high = quantile(mu_id_50, 0.975)[[1]], check.names = FALSE),
+  data.frame(Condition = "Unrelated", `Prime Duration` = "50 ms", Mean = mean(mu_un_50), SE = sd(mu_un_50), CI_low = quantile(mu_un_50, 0.025)[[1]], CI_high = quantile(mu_un_50, 0.975)[[1]], check.names = FALSE)
 )
 ```
 
@@ -906,10 +966,10 @@ tau_id_50 <- exp(draws_exp1$b_tau_Intercept - 0.5 * draws_exp1$b_tau_Condition1 
 tau_un_50 <- exp(draws_exp1$b_tau_Intercept + 0.5 * draws_exp1$b_tau_Condition1 + 0.5 * draws_exp1$b_tau_PrimeDuration1 + 0.25 * draws_exp1$`b_tau_Condition1:PrimeDuration1`)
 
 real_tau_means <- rbind(
-  data.frame(Condition = "Identical", PrimeDuration = "33 ms", Mean = mean(tau_id_33), SE = sd(tau_id_33), CI_low = quantile(tau_id_33, 0.025)[[1]], CI_high = quantile(tau_id_33, 0.975)[[1]]),
-  data.frame(Condition = "Unrelated", PrimeDuration = "33 ms", Mean = mean(tau_un_33), SE = sd(tau_un_33), CI_low = quantile(tau_un_33, 0.025)[[1]], CI_high = quantile(tau_un_33, 0.975)[[1]]),
-  data.frame(Condition = "Identical", PrimeDuration = "50 ms", Mean = mean(tau_id_50), SE = sd(tau_id_50), CI_low = quantile(tau_id_50, 0.025)[[1]], CI_high = quantile(tau_id_50, 0.975)[[1]]),
-  data.frame(Condition = "Unrelated", PrimeDuration = "50 ms", Mean = mean(tau_un_50), SE = sd(tau_un_50), CI_low = quantile(tau_un_50, 0.025)[[1]], CI_high = quantile(tau_un_50, 0.975)[[1]])
+  data.frame(Condition = "Identical", `Prime Duration` = "33 ms", Mean = mean(tau_id_33), SE = sd(tau_id_33), CI_low = quantile(tau_id_33, 0.025)[[1]], CI_high = quantile(tau_id_33, 0.975)[[1]], check.names = FALSE),
+  data.frame(Condition = "Unrelated", `Prime Duration` = "33 ms", Mean = mean(tau_un_33), SE = sd(tau_un_33), CI_low = quantile(tau_un_33, 0.025)[[1]], CI_high = quantile(tau_un_33, 0.975)[[1]], check.names = FALSE),
+  data.frame(Condition = "Identical", `Prime Duration` = "50 ms", Mean = mean(tau_id_50), SE = sd(tau_id_50), CI_low = quantile(tau_id_50, 0.025)[[1]], CI_high = quantile(tau_id_50, 0.975)[[1]], check.names = FALSE),
+  data.frame(Condition = "Unrelated", `Prime Duration` = "50 ms", Mean = mean(tau_un_50), SE = sd(tau_un_50), CI_low = quantile(tau_un_50, 0.025)[[1]], CI_high = quantile(tau_un_50, 0.975)[[1]], check.names = FALSE)
 )
 ```
 
