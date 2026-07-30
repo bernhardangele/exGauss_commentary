@@ -129,7 +129,10 @@ In this commentary, we demonstrate what the default parameterization of the ex-G
 
 ## Simulation Example
 
-To demonstrate the issue with fitting the default ex-Gaussian model in {brms}, we simulate data using a comparison adapted from one of our own studies [@geller2025] in R [version 4.6.0, @R]. In @geller2025, we examined how perceptual disfluency—manipulated by varying the level of blur applied to letter strings influenced reaction times in a lexical decision task (i.e., is this letter string a word?), and whether these effects were related to how well someone remembers the words in a reconition memory task. In that study, low blur words affected early stages of encoding, reflected in the Gaussian location parameter $\mu$, but not the later, tail component captured by $\tau$. For the present illustration, however, we construct a sharper scenario in which $\mu$ and $\tau$ differ in opposite directions so that the two conditions share the same expected reaction time. Using the classical ex-Gaussian parameterization implemented in the {cogmod} package [@makowski2026cogmod], we simulate ex-Gaussian data for clearly presented and low-blur words in which $\mu$ is set to 500 ms and 550 ms, $\tau$ to 100 ms and 50 ms, and $\sigma$ to 60 ms in both conditions (see @tbl-exgauss).
+### Data Generation
+
+To demonstrate the issue with fitting the default ex-Gaussian model in {brms}, we simulate data using a comparison adapted from one of our own studies [@geller2025] in R [version 4.6.0, @R]. In @geller2025, we examined how perceptual disfluency—manipulated by varying the level of blur applied to letter strings influenced reaction times in a lexical decision task (i.e., is this letter string a word?), and whether these effects were related to how well someone remembers the words in a reconition memory task. In that study, low blur words affected early stages of encoding, reflected in the Gaussian location parameter $\mu$, but not the later, tail component captured by $\tau$. For the present illustration, however, we construct a sharper scenario in which $\mu$ and $\tau$ differ in opposite directions so that the two conditions share the same expected reaction time. Using the classical ex-Gaussian parameterization implemented in the {cogmod} package [@makowski2026cogmod], we simulate ex-Gaussian data for clearly presented and low-blur words in which $\mu$ is set to 500 ms and 550 ms, $\tau$ to 100 ms and 50 ms, and $\sigma$ to 60 ms in both conditions (see @tbl-exgauss). 
+
 
 ```{r}
 #| label: load-packages
@@ -197,9 +200,8 @@ colnames(param_table) <- c("Blur", "μ", "σ", "τ", "Expected RT")
 tt(param_table)
 ```
 
-### Simulate the Data
 
-We first draw 100 reaction times per condition (200 in total) from the ex-Gaussian distributions defined by these parameters (@lst-simulate-data).
+To simulate the data, We first draw 100 reaction times per condition (200 in total) from the ex-Gaussian distributions defined by these parameters (@lst-simulate-data).
 
 ```{r}
 #| label: simulate-data
@@ -353,7 +355,7 @@ ggplot(d, aes(x = rt)) +
   )
 ```
 
-## Default {brms} Parameterization
+### Default {brms} Parameterization
 
 Using this data we fit the default `brms` ex-Gaussian model. In this parameterization, the parameter labeled `mu` represents the expected value of the full ex-Gaussian distribution rather than the location of its Gaussian component.
 
@@ -369,7 +371,7 @@ In other words, the default {brms} parameterization uses `mu` for the expected v
 
 Both the expected response and the exponential component are allowed to vary across conditions.
 
-### Prior Specification
+#### Prior Specification
 
 The priors were selected to reflect the known scale of the simulated data while remaining sufficiently broad to allow the model to recover deviations from the generating values. @tbl-priors shows these priors alongside those used for the classical parameterization introduced later, so the two specifications can be compared directly.
 
@@ -426,16 +428,16 @@ priors_table <- data.frame(
   Classical = c(
     "Normal(500, 100)",
     "Normal(0, 50)",
-    "Normal(100, 50)",
-    "Normal(0, 50)",
-    "Normal(60, 30)"
+    "Normal(log(100), 0.5)",
+    "Normal(0, 0.5)",
+    "Normal(log(60), 0.5)"
   ),
   Notes = c(
-    "Same form; centered on each parameterization's reference-condition value (E(RT) = 600 ms vs. Gaussian location = 500 ms)",
+    "Same form; centered on each parameterization's reference-condition value (E(RT) = 600 ms vs. Gaussian location = 500 ms); both mu and E(RT) use an identity link, so both priors are on the response scale",
     "Identical across parameterizations; no assumed direction for the effect of Blur",
-    "Default model: brms's native `exgaussian()` uses a log link for beta, so the prior is on the log scale, centered at log(100 ms). Classical model: cogmod's `rt_exgaussian()` uses a softplus link (~identity away from zero), so the prior is specified directly on the response scale, centered at 100 ms",
-    "Same intent (no assumed direction for the effect of Blur) in both models, but expressed on the log scale for the default model and on the response scale for the classical model",
-    "Only the classical model estimates sigma explicitly; `rt_exgaussian()`'s softplus link lets the prior be specified directly on the response scale, centered at 60 ms"
+    "Identical form in both models: brms's native `exgaussian()` and {cogmod}'s `rt_exgaussian()` (here fit with `link_tau = \"log\"`) both use a log link for the exponential component, so the prior is on the log scale, centered at log(100 ms)",
+    "Identical across parameterizations; no assumed direction for the effect of Blur, expressed on the log scale",
+    "Only the classical model estimates sigma explicitly; fit with `link_sigma = \"log\"`, so the prior is on the log scale, centered at log(60 ms)"
   )
 )
 colnames(priors_table) <- c(
@@ -472,9 +474,11 @@ fit_brms <- brm(
 )
 ```
 
-### Estimating Ex-Gaussian Parameters with `{easystats}`
+#### Estimating Ex-Gaussian Parameters with `{easystats}`
 
 The `{modelbased}` package [@makowski2025modelbased], which is part of the `{easystats}` ecosystem [@ludecke2019insight], can easily be used to obtain condition-specific posterior estimates from a fitted model. The `estimate_means()` function returns estimated parameters for each condition, back-transformed, so estimates are presented on time scale, whereas `estimate_contrasts()` computes differences between conditions.
+
+Throughout this commentary, we treat an effect as reflecting a credible difference when its 95% credible interval excludes zero and its probability of direction (pd) exceeds .975; when either condition fails to hold, we describe the effect as non-credible or uncertain.
 
 As shown in @tbl-exgauss, the present data were generated so that the two conditions have the same expected reaction time but differ in the Gaussian and exponential components of the ex-Gaussian distribution.
 
@@ -484,7 +488,7 @@ $$E(RT) = \mu + \tau.$$
 
 Thus, the 50-ms increase in $\mu$ for the Low-Blur condition is offset by a 50-ms decrease in $\tau$. The expected RT is therefore 600 ms in both conditions.
 
-### Estimating the Expected Response ($\mu$)
+#### Estimating the Expected Response ($\mu$)
 
 Condition-specific estimates of the expected response can be obtained with `estimate_means()` and setting `predict` argument to "mu" (@lst-estimate-mu-default):
 
@@ -521,7 +525,7 @@ The posterior estimate of this contrast should be close to zero because the two 
 
 $$(550 + 50) - (500 + 100) = 600 - 600 = 0.$$
 
-### Estimating the Exponential Component
+#### Estimating the Exponential Component
 
 In the default {`brms}` parameterization, `beta` represents the mean of the exponential component. It therefore corresponds directly to $\tau$ in the classical parameterization:
 
@@ -646,17 +650,17 @@ tt(default_contrast_tbl)
 
 As shown in @tbl-default-contrast, the default model correctly recovers a near-zero contrast in $E(RT)$, since the two conditions were generated with the same expected RT. However, its primary `mu` coefficient does not directly reveal the 50-ms difference in the Gaussian-location parameter — that difference only shows up in the `beta` contrast, which is approximately 50 ms.
 
-## Classical Ex-Gaussian Parameterization
+### Classical Ex-Gaussian Parameterization
 
 As we have shown above, the default paramterization gives you the exected RT of the entire distribution. We can instead fit the model using the `rt_exgaussian()` family from the {cogmod} package, which implements the classical ex-Gaussian parameterization. In this model, $\mu$ represents the location of the Gaussian component and $\tau$ represents the mean of the exponential component.
 
-In {cogmod}, all three parameters use a softplus link by default, rather than the identity or log links {brms} typically applies. An identity link would let the linear predictor cross zero, which is invalid for all three parameters, since $\mu$ must stay positive to represent a genuine RT-scale location, and $\sigma$ and $\tau$ are positive by definition. A log link would also enforce positivity, but its curvature grows sharply away from zero, producing extreme gradients that make priors hard to calibrate. Softplus keeps the positivity constraint but behaves almost linearly away from zero, so priors can be specified directly on the response scale.
+By default, {cogmod} links all three parameters with a softplus function, rather than the identity or log links {brms} typically applies. An identity link would let the linear predictor cross zero, which is invalid for all three parameters, since $\mu$ must stay positive to represent a genuine RT-scale location, and $\sigma$ and $\tau$ are positive by definition. Softplus keeps the positivity constraint but behaves almost linearly away from zero, which is convenient in principle — but only in the positive direction, and only once the linear predictor is comfortably greater than zero: $\text{softplus}(x) = \log(1+e^x) \to x$ as $x \to \infty$, but $\text{softplus}(x) \to 0$ as $x \to -\infty$, so the link is sharply nonlinear for negative or near-zero linear predictors (e.g., $\text{softplus}(-2) \approx 0.13$, nothing like $-2$). Whether a response-scale prior actually lands in that near-linear region depends on the measurement scale of the outcome, not just the link function itself — the same nominal prior can behave very differently depending on whether an RT is coded in milliseconds or seconds.
 
-This near-identity behavior holds only in the positive direction, and only once the linear predictor is comfortably greater than zero: $\text{softplus}(x) = \log(1+e^x) \to x$ as $x \to \infty$, but $\text{softplus}(x) \to 0$ as $x \to -\infty$, so the link is sharply nonlinear for negative or near-zero linear predictors (e.g., $\text{softplus}(-2) \approx 0.13$, nothing like $-2$). Whether a response-scale prior lands in the near-linear region therefore depends on the measurement scale of the outcome, not just the link function itself. In the simulated example above, $\mu$, $\sigma$, and $\tau$ are specified in milliseconds (e.g., 500, 100, 60), so the linear predictor needed to reproduce those values is itself large and positive, safely inside the near-linear region. This does not automatically hold at other measurement scales — see the note on the real-data model's priors below, where reaction time is coded in seconds rather than milliseconds.
+Because of this scale-sensitivity, and because we would rather interpret every coefficient directly in `estimate_means()`/`estimate_contrasts()` output than reason about a link function at all, we do not use {cogmod}'s default softplus link in this paper. `rt_exgaussian()` accepts `link_mu`, `link_sigma`, and `link_tau` arguments so each parameter's link can be set independently; we use an identity link for $\mu$ and a log link for $\sigma$ and $\tau$ — the same links {brms}'s own built-in `exgaussian()` family uses for its location and scale parameters, and a familiar, scale-robust choice for enforcing positivity (unlike softplus, log's behavior does not depend on whether the parameter values happen to be small or large in absolute terms). The model is specified with `family = rt_exgaussian(link = "identity", link_sigma = "log", link_tau = "log")`.
 
 At the sampling level, the log-likelihood is written in Stan and calls the built-in `exp_mod_normal_lpdf()` function^[<https://github.com/DominiqueMakowski/cogmod/blob/4b10ea5e00e02984d39c0749adf8dc0b9c4ab15b/R/rt_exgaussian_brms.R#L30-L37>], which implements the exponentially modified Gaussian density. That built-in function is parameterized by the rate of the exponential component rather than its mean, so $\tau$ is converted internally via $1/\tau$ before being passed in. The custom family simply relabels and re-links Stan's existing exponentially modified Gaussian implementation.
 
-### Prior Specification
+#### Prior Specification
 
 The priors for the classical model follow the same reasoning as those for the default model, shown together in @tbl-priors:
 
@@ -665,10 +669,8 @@ The priors for the classical model follow the same reasoning as those for the de
 #| echo: false
 priors_classical <- c(
   # mu intercept: centered at 500 ms, now the Gaussian location of the
-  # reference condition (not E(RT)). rt_exgaussian() uses a "softplus"
-  # link by default (log(1 + exp(x))), which behaves almost linearly
-  # away from zero, so priors can still be specified directly on the
-  # response (ms) scale.
+  # reference condition (not E(RT)). mu uses an identity link, so this
+  # prior is specified directly on the response (ms) scale.
   prior(
     normal(500, 100),
     class = "Intercept"
@@ -678,21 +680,21 @@ priors_classical <- c(
     normal(0, 50),
     class = "b"
   ),
-  # tau (exponential mean) intercept, on the response scale: 100 ms.
+  # tau (exponential mean) intercept, on the log scale: exp(log(100)) = 100 ms.
   prior(
-    normal(100, 50),
+    normal(log(100), 0.5),
     class = "Intercept",
     dpar = "tau"
   ),
-  # Effect of Blur on tau, on the response scale: centered at 0.
+  # Effect of Blur on tau (log scale): centered at 0.
   prior(
-    normal(0, 50),
+    normal(0, 0.5),
     class = "b",
     dpar = "tau"
   ),
-  # sigma (Gaussian SD) intercept, on the response scale: 60 ms.
+  # sigma (Gaussian SD) intercept, on the log scale: exp(log(60)) = 60 ms.
   prior(
-    normal(60, 30),
+    normal(log(60), 0.5),
     class = "Intercept",
     dpar = "sigma"
   )
@@ -713,7 +715,7 @@ fit_brms_new <- brm(
   ),
   data = d,
   prior = priors_classical,
-  family = rt_exgaussian(), # Reparametrized ex-Gaussian family from {cogmod}
+  family = rt_exgaussian(link = "identity", link_sigma = "log", link_tau = "log"), # {cogmod} family with identity/log links
   stanvars = rt_exgaussian_stanvars(), # Stan code injected into the model
   chains = 2,
   iter = 2000,
@@ -724,7 +726,7 @@ fit_brms_new <- brm(
 )
 ```
 
-### Estimating the Gaussian-Location Parameter
+#### Estimating the Gaussian-Location Parameter
 
 For the classical model, estimates from the primary regression formula correspond to the Gaussian-location parameter $\mu$ (@lst-estimate-mu-classical):
 
@@ -760,7 +762,7 @@ mu_difference <- estimate_contrasts(
 
 The posterior mean will not necessarily equal exactly 50 ms because of sampling variability. However, the 95% credible interval should contain the population value of 50 ms when the model successfully recovers the simulated effect.
 
-### Estimating the Exponential Component
+#### Estimating the Exponential Component
 
 Condition-specific estimates of $\tau$ can be obtained by requesting predictions for the `tau` distributional parameter (@lst-estimate-tau-classical):
 
@@ -992,9 +994,7 @@ In order to demonstrate how the difference between parameterizations can affect 
 
 To fit their ex-Gaussian models, @angele2023 used the built-in `exgaussian()` family in {brms}. As established above, the primary formula in default {brms} models the overall distributional mean $E(RT) = \mu_{\text{Gaussian}} + \tau$, despite assigning the label `mu` to this parameter. In their manuscript, @angele2023 interpreted regression effects on `mu` as changes in the location of the Gaussian component $\mu$.
 
-Here, we apply the classical ex-Gaussian parameterization using `{cogmod}`, modeling reaction times with maximal random intercepts and random slopes for participants (`source`) and items (`Target`) across both $\mu$ (Gaussian location) and $\tau$ (exponential mean).
-
-Reaction time is coded in seconds (not milliseconds) in this dataset. As discussed above, `rt_exgaussian()`'s softplus link behaves near-linearly only for linear predictors that are comfortably positive; on a seconds scale, the expected values of $\mu$, $\tau$, and $\sigma$ are themselves small (well under 1), so the corresponding linear predictors sit in the curved part of the softplus rather than the near-linear part. The priors below are specified on this seconds scale accordingly, and the same caveat applies to reading the raw model coefficients directly: back-transforming them individually with softplus, rather than via `estimate_means()`/`estimate_contrasts()`, will not reproduce condition-specific estimates correctly, because softplus is nonlinear and effects on different predictors cannot be back-transformed and then summed.
+Here, we apply the classical ex-Gaussian parameterization using `{cogmod}`, modeling reaction times with maximal random intercepts and random slopes for participants (`source`) and items (`Target`) across both $\mu$ (Gaussian location) and $\tau$ (exponential mean). Reaction time is coded in milliseconds in this dataset. As discussed above, we fit this model with `link_mu = "identity"` and `link_sigma = link_tau = "log"` rather than {cogmod}'s default softplus links, so priors and raw model coefficients for $\mu$ are directly on the millisecond scale, and priors for $\sigma$ and $\tau$ are on the (familiar, scale-robust) log scale. As with the simulated example, all condition-specific estimates and contrasts are still obtained through `estimate_means()`/`estimate_contrasts()` rather than by reading the raw coefficients directly.
 
 Prior specification for the classical model is summarized in @tbl-priors-real.
 
@@ -1003,24 +1003,24 @@ Prior specification for the classical model is summarized in @tbl-priors-real.
 #| eval: false
 #| echo: false
 priors_classical <- c(
-  # Gaussian location mu: Intercept & effects (seconds scale)
-  prior(normal(0.5, 0.1), class = "Intercept"),
-  prior(normal(0, 0.1), class = "b", coef = "Condition1"),
-  prior(normal(0, 0.1), class = "b", coef = "PrimeDuration1"),
-  prior(normal(0, 0.1), class = "b", coef = "Condition1:PrimeDuration1"),
+  # Gaussian location mu: Intercept & effects (identity link, ms scale)
+  prior(normal(500, 100), class = "Intercept"),
+  prior(normal(0, 100), class = "b", coef = "Condition1"),
+  prior(normal(0, 100), class = "b", coef = "PrimeDuration1"),
+  prior(normal(0, 100), class = "b", coef = "Condition1:PrimeDuration1"),
 
-  # Exponential tail tau (response scale, via cogmod's softplus link): Intercept & effects
-  prior(normal(0.1, 0.05), class = "Intercept", dpar = "tau"),
-  prior(normal(0, 0.05), class = "b", dpar = "tau"),
+  # Exponential tail tau (log link): Intercept & effects
+  prior(normal(log(100), 0.5), class = "Intercept", dpar = "tau"),
+  prior(normal(0, 0.5), class = "b", dpar = "tau"),
 
-  # Gaussian SD sigma (response scale): Intercept
-  prior(normal(0.06, 0.03), class = "Intercept", dpar = "sigma")
+  # Gaussian SD sigma (log link): Intercept
+  prior(normal(log(60), 0.5), class = "Intercept", dpar = "sigma")
 )
 ```
 
 ```{r}
 #| label: tbl-priors-real
-#| tbl-cap: "Prior specification (in seconds) for the classical ex-Gaussian model fit to Experiment 1 from @angele2023."
+#| tbl-cap: "Prior specification for the classical ex-Gaussian model fit to Experiment 1 from @angele2023."
 #| echo: false
 #| results: asis
 priors_table_real <- data.frame(
@@ -1034,13 +1034,13 @@ priors_table_real <- data.frame(
     "Intercept (σ)"
   ),
   Prior = c(
-    "Normal(0.5, 0.1)",
-    "Normal(0, 0.1)",
-    "Normal(0, 0.1)",
-    "Normal(0, 0.1)",
-    "Normal(0.1, 0.05)",
-    "Normal(0, 0.05)",
-    "Normal(0.06, 0.03)"
+    "Normal(500, 100)",
+    "Normal(0, 100)",
+    "Normal(0, 100)",
+    "Normal(0, 100)",
+    "Normal(log(100), 0.5)",
+    "Normal(0, 0.5)",
+    "Normal(log(60), 0.5)"
   )
 )
 tt(priors_table_real)
@@ -1067,13 +1067,13 @@ N_target <- length(unique(data_fit$Target))
 # Function generating stable initial values for all Stan parameters
 init_classical <- function() {
   list(
-    Intercept = 0.5, # Gaussian location (seconds)
-    Intercept_sigma = 0.06, # Gaussian SD (response scale, softplus link)
-    Intercept_tau = 0.1, # Exponential tail (response scale, softplus link)
+    Intercept = 500, # Gaussian location (ms, identity link)
+    Intercept_sigma = log(60), # Gaussian SD (log link)
+    Intercept_tau = log(100), # Exponential tail (log link)
     b = rep(0, 3), # Fixed effects on mu
     b_tau = rep(0, 3), # Fixed effects on tau
-    sd_1 = rep(0.03, 4), # Participant SDs for mu (seconds)
-    sd_2 = rep(0.03, 4), # Item SDs for mu (seconds)
+    sd_1 = rep(30, 4), # Participant SDs for mu (ms)
+    sd_2 = rep(30, 4), # Item SDs for mu (ms)
     sd_3 = rep(0.1, 4), # Participant SDs for tau (small to prevent overflow)
     sd_4 = rep(0.1, 4), # Item SDs for tau (small to prevent overflow)
     z_1 = matrix(0, nrow = 4, ncol = N_source), # Participant random effects for mu
@@ -1111,7 +1111,7 @@ blmm_exp1_classical_rt <- brm(
   iter = 5000,
   chains = 4,
   prior = priors_classical,
-  family = rt_exgaussian(), # Reparametrized ex-Gaussian family from {cogmod}
+  family = rt_exgaussian(link = "identity", link_sigma = "log", link_tau = "log"), # {cogmod} family with identity/log links
   stanvars = rt_exgaussian_stanvars(), # Stan code injected into the model
   inits = init_classical,
   cores = 4,
