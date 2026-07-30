@@ -1,3 +1,7 @@
+# Agent and devcontainer settings
+AGENTS.md
+.devcontainer/
+
 # Quarto render caches
 .quarto/
 
@@ -8,3 +12,5 @@
 *.qs2
 
 ms/ms_files/
+/.quarto/
+**/*.quarto_ipynb
