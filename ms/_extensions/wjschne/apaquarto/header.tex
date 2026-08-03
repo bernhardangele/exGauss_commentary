@@ -13,11 +13,7 @@
 
 
 
-% longtable is already loaded via doc-class.tex (apa7 class option) and
-% apatemplate.tex (\RequirePackage{longtable}). Keep booktabs here so raw
-% LaTeX tables using \toprule/\midrule still render even without Pandoc table
-% nodes.
-\usepackage{booktabs, multirow, multicol, colortbl, hhline, caption, array, float, xpatch}
+\usepackage{longtable, booktabs, multirow, multicol, colortbl, hhline, caption, array, float, xpatch}
 \usepackage{subcaption}
 
 
@@ -53,4 +49,5 @@
 
 \usepackage{hyperref}
 \usepackage[protrusion=true]{microtype}
+
 

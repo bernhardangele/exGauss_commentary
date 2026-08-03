@@ -130,8 +130,7 @@ In this commentary, we demonstrate what the default parameterization of the ex-G
 
 ### Data Generation
 
-To demonstrate the issue with fitting the default ex-Gaussian model in {brms}, we simulate data using a comparison adapted from one of our own studies [@geller2025] in R [version 4.6.0, @R]. In @geller2025, we examined how perceptual disfluency—manipulated by varying the level of blur applied to letter strings influenced reaction times in a lexical decision task (i.e., is this letter string a word?), and whether these effects were related to how well someone remembers the words in a reconition memory task. In that study, low blur words affected early stages of encoding, reflected in the Gaussian location parameter $\mu$, but not the later, tail component captured by $\tau$. For the present illustration, however, we construct a sharper scenario in which $\mu$ and $\tau$ differ in opposite directions so that the two conditions share the same expected reaction time. Using the classical ex-Gaussian parameterization implemented in the {cogmod} package [@makowski2026cogmod], we simulate ex-Gaussian data for clearly presented and low-blur words in which $\mu$ is set to 500 ms and 550 ms, $\tau$ to 100 ms and 50 ms, and $\sigma$ to 60 ms in both conditions (see @tbl-exgauss). 
-
+To demonstrate the issue with fitting the default ex-Gaussian model in {brms}, we simulate data using a comparison adapted from one of our own studies [@geller2025] in R [version 4.6.0, @R]. In @geller2025, we examined how perceptual disfluency—manipulated by varying the level of blur applied to letter strings influenced reaction times in a lexical decision task (i.e., is this letter string a word?), and whether these effects were related to how well someone remembers the words in a reconition memory task. In that study, low blur words affected early stages of encoding, reflected in the Gaussian location parameter $\mu$, but not the later, tail component captured by $\tau$. For the present illustration, however, we construct a sharper scenario in which $\mu$ and $\tau$ differ in opposite directions so that the two conditions share the same expected reaction time. Using the classical ex-Gaussian parameterization implemented in the {cogmod} package [@makowski2026cogmod], we simulate ex-Gaussian data for clearly presented and low-blur words in which $\mu$ is set to 500 ms and 550 ms, $\tau$ to 100 ms and 50 ms, and $\sigma$ to 60 ms in both conditions (see @tbl-exgauss).
 
 ```{r}
 #| label: load-packages
@@ -153,9 +152,19 @@ library(patchwork)
 split_qs2_script <- if (file.exists("split_qs2.R")) "split_qs2.R" else if (file.exists("../split_qs2.R")) "../split_qs2.R" else NULL
 if (!is.null(split_qs2_script)) {
   source(split_qs2_script)
-  root_dir <- if (dir.exists("Angele_et_al_2022")) "." else ".."
+  # _quarto.yml only exists at the project root, so this is unambiguous
+  # (unlike checking for Angele_et_al_2022/, which can also exist under ms/
+  # locally e.g. from old interactive-session artifacts).
+  root_dir <- if (file.exists("_quarto.yml")) "." else ".."
   check_and_combine_qs2(root_dir)
 }
+
+# Where brm(..., file = ...) below caches fitted models across renders.
+# root_dir already points from the current working directory (either the
+# project root or ms/, depending on execute-dir) back to the project root,
+# so appending "ms/fits" resolves correctly either way.
+fits_dir <- file.path(root_dir, "ms", "fits")
+if (!dir.exists(fits_dir)) dir.create(fits_dir, recursive = TRUE)
 
 # Shared formatting helpers, reused when building the condensed (long-format)
 # tables: one row per condition/effect x parameter, with Greek symbols (μ, τ,
@@ -208,7 +217,6 @@ colnames(param_table) <- c("Blur", "μ", "σ", "τ", "Expected RT")
 
 tt(param_table)
 ```
-
 
 To simulate the data, We first draw 100 reaction times per condition (200 in total) from the ex-Gaussian distributions defined by these parameters (@lst-simulate-data).
 
@@ -479,7 +487,9 @@ fit_brms <- brm(
   warmup = 500,
   backend = "cmdstanr",
   cores = 4,
-  seed = 1234 # reproducible draws
+  seed = 1234, # reproducible draws
+  file = file.path(fits_dir, "fit-default"), # cache: skip refitting if unchanged
+  file_refit = "on_change" # but do refit if the model spec above changes
 )
 ```
 
@@ -667,7 +677,9 @@ By default, {cogmod} links all three parameters with a softplus function, rather
 
 Because of this scale-sensitivity, and because we would rather interpret every coefficient directly in `estimate_means()`/`estimate_contrasts()` output than reason about a link function at all, we do not use {cogmod}'s default softplus link in this paper. `rt_exgaussian()` accepts `link_mu`, `link_sigma`, and `link_tau` arguments so each parameter's link can be set independently; we use an identity link for $\mu$ and a log link for $\sigma$ and $\tau$ — the same links {brms}'s own built-in `exgaussian()` family uses for its location and scale parameters, and a familiar, scale-robust choice for enforcing positivity (unlike softplus, log's behavior does not depend on whether the parameter values happen to be small or large in absolute terms). The model is specified with `family = rt_exgaussian(link = "identity", link_sigma = "log", link_tau = "log")`.
 
-At the sampling level, the log-likelihood is written in Stan and calls the built-in `exp_mod_normal_lpdf()` function^[<https://github.com/DominiqueMakowski/cogmod/blob/4b10ea5e00e02984d39c0749adf8dc0b9c4ab15b/R/rt_exgaussian_brms.R#L30-L37>], which implements the exponentially modified Gaussian density. That built-in function is parameterized by the rate of the exponential component rather than its mean, so $\tau$ is converted internally via $1/\tau$ before being passed in. The custom family simply relabels and re-links Stan's existing exponentially modified Gaussian implementation.
+At the sampling level, the log-likelihood is written in Stan and calls the built-in `exp_mod_normal_lpdf()` function[^1], which implements the exponentially modified Gaussian density. That built-in function is parameterized by the rate of the exponential component rather than its mean, so $\tau$ is converted internally via $1/\tau$ before being passed in. The custom family simply relabels and re-links Stan's existing exponentially modified Gaussian implementation.
+
+[^1]: <https://github.com/DominiqueMakowski/cogmod/blob/4b10ea5e00e02984d39c0749adf8dc0b9c4ab15b/R/rt_exgaussian_brms.R#L30-L37>
 
 #### Prior Specification
 
@@ -731,7 +743,9 @@ fit_brms_new <- brm(
   warmup = 500,
   backend = "cmdstanr",
   cores = 4,
-  seed = 1234
+  seed = 1234,
+  file = file.path(fits_dir, "fit-classical"), # cache: skip refitting if unchanged
+  file_refit = "on_change" # but do refit if the model spec above changes
 )
 ```
 
@@ -1406,18 +1420,22 @@ real_contrasts_display <- rbind(
   data.frame(
     Effect = real_contrasts_tbl$Effect,
     `Default brms E(RT)` = real_contrasts_tbl$`Default brms E(RT)`,
-    Parameter = "μ",
-    Estimate = real_contrasts_tbl$Mu,
-    `95% CrI` = real_contrasts_tbl$`Mu 95% CrI`,
+    `Classical Parameter` = "μ",
+    `Mean [95% CrI]` = paste(
+      real_contrasts_tbl$Mu,
+      real_contrasts_tbl$`Mu 95% CrI`
+    ),
     pd = real_contrasts_tbl$`Mu pd`,
     check.names = FALSE
   ),
   data.frame(
     Effect = real_contrasts_tbl$Effect,
     `Default brms E(RT)` = real_contrasts_tbl$`Default brms E(RT)`,
-    Parameter = "τ",
-    Estimate = real_contrasts_tbl$Tau,
-    `95% CrI` = real_contrasts_tbl$`Tau 95% CrI`,
+    `Classical Parameter` = "τ",
+    `Mean [95% CrI]` = paste(
+      real_contrasts_tbl$Tau,
+      real_contrasts_tbl$`Tau 95% CrI`
+    ),
     pd = real_contrasts_tbl$`Tau pd`,
     check.names = FALSE
   )
@@ -1430,6 +1448,10 @@ real_contrasts_display <- real_contrasts_display[
   order(real_contrasts_display$Effect),
 ]
 real_contrasts_display$Effect <- as.character(real_contrasts_display$Effect)
+# Default brms E(RT) is an Effect-level (not Parameter-level) value, so it's
+# identical across the mu/tau row pair for each effect; blank the repeat.
+dup_effect <- duplicated(real_contrasts_display$Effect)
+real_contrasts_display$`Default brms E(RT)`[dup_effect] <- ""
 rownames(real_contrasts_display) <- NULL
 ```
 

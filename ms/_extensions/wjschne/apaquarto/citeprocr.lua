@@ -6,7 +6,7 @@
 -- Counter for citation
 local n_citations = 0
 local referenceword = "References"
-local maskedauthor = "Masked Author"
+local maskedauthor = "Masked Citation"
 local maskedtitle = "Masked Title"
 local maskeddate = "n.d."
 local metaanalysis = true

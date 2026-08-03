@@ -11,6 +11,10 @@ AGENTS.md
 # Large model output files
 *.qs2
 
+# Cached brms fits for the simulated-data models (regenerated on first render)
+ms/fits/
+
 ms/ms_files/
+ms/ms_cache/
 /.quarto/
 **/*.quarto_ipynb
