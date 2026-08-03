@@ -73,7 +73,7 @@ wordcount: true
 author-note:
   disclosures:
     study-registration: "The analyses herein were not preregistered."
-    data-sharing: Data, code, and materials for this manuscript can be found at the Github
+    data-sharing: Data, code, and materials for this manuscript are available at https://github.com/jgeller112/exGauss_commentary. The entire manuscript, including all analyses and figures, can be reproduced by downloading the repository and following the instructions in its README.
     conflict-of-interest: The authors have no conflicts of interest to disclose.
     financial-support: ~
     authorship-agreements: ~
@@ -509,12 +509,11 @@ Thus, the 50-ms increase in $\mu$ for the Low-Blur condition is offset by a 50-m
 
 #### Estimating the Expected Response ($\mu$)
 
-Condition-specific estimates of the expected response can be obtained with `estimate_means()` and setting `predict` argument to "mu" (@lst-estimate-mu-default):
+Condition-specific estimates of the expected response can be obtained with `estimate_means()` and setting `predict` argument to "mu".
 
 ```{r}
 #| label: estimate-mu-default
-#| lst-label: lst-estimate-mu-default
-#| lst-cap: "Estimating the condition-specific expected response (mu) from the default model."
+#| echo: false
 # Default model: per-condition mu, which equals E(RT) in this parameterization.
 overall_means <- estimate_means(
   fit_brms,
@@ -526,12 +525,11 @@ overall_means <- estimate_means(
 
 Because the primary `mu` parameter in the default ex-Gaussian model represents $E(RT)$, these estimates should be close to 600 ms in both conditions.
 
-The corresponding contrast can be obtained using `estimate_contrasts()` (@lst-contrast-mu-default):
+The corresponding contrast can be obtained using `estimate_contrasts()`.
 
 ```{r}
 #| label: contrast-mu-default
-#| lst-label: lst-contrast-mu-default
-#| lst-cap: "Estimating the Blur contrast in the expected response (default model)."
+#| echo: false
 # Default model: Blur contrast in E(RT) (≈ 0 by design).
 overall_difference <- estimate_contrasts(
   fit_brms,
@@ -550,12 +548,11 @@ In the default {`brms}` parameterization, `beta` represents the mean of the expo
 
 $$\beta = \tau.$$
 
-Condition-specific estimates can be obtained by requesting predictions for `beta` (@lst-estimate-beta-default):
+Condition-specific estimates can be obtained by requesting predictions for `beta`.
 
 ```{r}
 #| label: estimate-beta-default
-#| lst-label: lst-estimate-beta-default
-#| lst-cap: "Estimating the condition-specific exponential component (beta) from the default model."
+#| echo: false
 # Default model: per-condition beta (the exponential mean = classical tau).
 tau_estimates_default <- estimate_means(
   fit_brms,
@@ -607,12 +604,11 @@ tt(default_means_tbl)
 
 These estimates should be close to 600 ms for $E(RT)$ in both conditions, and approximately 100 ms for Clear and 50 ms for Low-Blur for `beta`.
 
-The corresponding contrasts can be obtained using (@lst-contrast-beta-default):
+The corresponding contrasts can be obtained using `estimate_contrasts()`.
 
 ```{r}
 #| label: contrast-beta-default
-#| lst-label: lst-contrast-beta-default
-#| lst-cap: "Estimating the Blur contrast in the exponential component (beta) from the default model."
+#| echo: false
 # Default model: Blur contrast in beta (the exponential component).
 tau_difference_default <- estimate_contrasts(
   fit_brms,
@@ -751,12 +747,11 @@ fit_brms_new <- brm(
 
 #### Estimating the Gaussian-Location Parameter
 
-For the classical model, estimates from the primary regression formula correspond to the Gaussian-location parameter $\mu$ (@lst-estimate-mu-classical):
+For the classical model, estimates from the primary regression formula correspond to the Gaussian-location parameter $\mu$.
 
 ```{r}
 #| label: estimate-mu-classical
-#| lst-label: lst-estimate-mu-classical
-#| lst-cap: "Estimating the Gaussian-location parameter (mu) from the classical model."
+#| echo: false
 # Classical model: per-condition mu, now the Gaussian-location parameter.
 mu_estimates <- estimate_means(
   fit_brms_new,
@@ -768,12 +763,11 @@ mu_estimates <- estimate_means(
 
 The estimates are approximately 500 ms for Clear and 550 ms for Low-Blur.
 
-The contrast between the two can be obtained using (@lst-contrast-mu-classical):
+The contrast between the two can be obtained using `estimate_contrasts()`.
 
 ```{r}
 #| label: contrast-mu-classical
-#| lst-label: lst-contrast-mu-classical
-#| lst-cap: "Estimating the Blur contrast in the Gaussian-location parameter (classical model)."
+#| echo: false
 # Classical model: Blur contrast in the Gaussian-location parameter mu.
 mu_difference <- estimate_contrasts(
   fit_brms_new,
@@ -787,12 +781,11 @@ The posterior mean will not necessarily equal exactly 50 ms because of sampling 
 
 #### Estimating the Exponential Component
 
-Condition-specific estimates of $\tau$ can be obtained by requesting predictions for the `tau` distributional parameter (@lst-estimate-tau-classical):
+Condition-specific estimates of $\tau$ can be obtained by requesting predictions for the `tau` distributional parameter.
 
 ```{r}
 #| label: estimate-tau-classical
-#| lst-label: lst-estimate-tau-classical
-#| lst-cap: "Estimating the exponential component (tau) from the classical model."
+#| echo: false
 # Classical model: per-condition tau (the exponential component).
 tau_estimates <- estimate_means(
   fit_brms_new,
@@ -847,12 +840,11 @@ tt(classical_means_tbl)
 
 The estimates should be close to 100 ms for Clear and 50 ms for Low-Blur for $\tau$.
 
-The corresponding contrast can be obtained using (@lst-contrast-tau-classical):
+The corresponding contrast can be obtained using `estimate_contrasts()`.
 
 ```{r}
 #| label: contrast-tau-classical
-#| lst-label: lst-contrast-tau-classical
-#| lst-cap: "Estimating the Blur contrast in the exponential component (tau) from the classical model."
+#| echo: false
 # Classical model: Blur contrast in tau (the exponential component).
 tau_difference <- estimate_contrasts(
   fit_brms_new,
