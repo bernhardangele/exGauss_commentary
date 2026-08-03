@@ -1,17 +1,19 @@
 #need this to set path to nix for some reason
 # Sys.setenv(PATH = paste("/nix/var/nix/profiles/default/bin", Sys.getenv("PATH"), sep=":"))
 
-required_packages = c(
+required_packages <- c(
   "brms",
   "easystats",
   "ggplot2",
   "ggdist",
-  "tinytable", 
+  "tinytable",
+  "ggdist",
+  "patchwork",
   "knitr",
-  "rmarkdown", 
-  "marginaleffects", 
-  "reformulas", 
-  "collapse", 
+  "rmarkdown",
+  "marginaleffects",
+  "reformulas",
+  "collapse",
   "ragg",
   "qs2"
 )
@@ -38,9 +40,9 @@ rix(
       commit = "541f36c74c236a322eaa0908e2e86425790ca2cf"
     ),
     list(
-      package_name = "brms.exgaussian",
-      repo_url = "https://github.com/mattansb/brms.exgaussian",
-      commit = "53b0745e10147b902acb4e40d72e0dd64033c311"
+      package_name = "cogmod",
+      repo_url = "https://github.com/DominiqueMakowski/cogmod",
+      commit = "4b10ea5e00e02984d39c0749adf8dc0b9c4ab15b"
     )
   ),
   tex_pkgs = c(
