@@ -73,6 +73,7 @@ exGauss_commentary/
   | brms | 2.23.0 |
   | cmdstanr | 0.9.0 |
   | cogmod | 0.0.21 |
+  | emmeans | 2.0.4 |
   | fs | 2.1.0 |
   | ggdist | 3.3.3 |
   | ggplot2 | 4.0.3 |
