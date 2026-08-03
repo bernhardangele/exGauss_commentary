@@ -64,12 +64,29 @@ exGauss_commentary/
 **Requirements**
 
 - [Quarto](https://quarto.org) ≥ 1.4
-- R, with the following packages:
-  - `brms` — Bayesian regression models
-  - `cogmod` — the classical ex-Gaussian family (`rrt_exgaussian()`, `rt_exgaussian()`, `rt_exgaussian_stanvars()`)
-  - `cmdstanr` + a working **CmdStan** install — the sampling backend
-  - `easystats` (uses `modelbased`) — `estimate_means()` / `estimate_contrasts()`
-  - `tinytable` — table formatting
+- R, with the following packages (versions as pinned in `default.nix`):
+
+  | Package | Version |
+  |---|---|
+  | R | 4.6.1 |
+  | bayestestR | 0.18.1 |
+  | brms | 2.23.0 |
+  | cmdstanr | 0.9.0 |
+  | cogmod | 0.0.21 |
+  | fs | 2.1.0 |
+  | ggdist | 3.3.3 |
+  | ggplot2 | 4.0.3 |
+  | here | 1.0.2 |
+  | modelbased | 0.16.0 |
+  | parameters | 0.29.2 |
+  | patchwork | 1.3.2 |
+  | qs2 | 0.2.2 |
+  | ragg | 1.5.2 |
+  | rmarkdown | 2.31 |
+  | tidyverse | 2.0.0 |
+  | tinytable | 0.17.0 |
+
+  Plus a working **CmdStan** install (the Stan sampling backend used via `cmdstanr`).
 
 **Render** (from inside `ms/`):
 
@@ -152,6 +169,7 @@ Everything else here is provenance/refit material, not required to render the pa
 - `participant_data_exp1.csv` (Qualtrics participant/survey data) and `data_exp1/`
   (raw per-participant PsychoJS trial data, `.csv` + `.log`) are the raw inputs to
   that refitting script.
+
 
 ## Notes
 
