@@ -1,5 +1,16 @@
+# Agent and devcontainer settings
+AGENTS.md
+.devcontainer/
+
 # Quarto render caches
 .quarto/
 
 # OS / editor junk
 .DS_Store
+
+# Large model output files
+*.qs2
+
+ms/ms_files/
+/.quarto/
+**/*.quarto_ipynb

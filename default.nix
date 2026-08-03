@@ -64,6 +64,7 @@ let
       knitr
       marginaleffects
       patchwork
+      qs2
       ragg
       reformulas
       rmarkdown

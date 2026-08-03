@@ -100,7 +100,6 @@ knitr:
     fig-dpi: 300
 format:
   apaquarto-typst:
-    documentmode: doc
     csl: apa.csl
   apaquarto-docx: default
   apaquarto-html:
@@ -139,14 +138,24 @@ To demonstrate the issue with fitting the default ex-Gaussian model in {brms}, w
 #| echo: false
 #| message: false
 #| warning: false
-#| 
+library(tidyverse)
+library(fs)
 library(brms)
 library(ragg)
 library(tinytable)
 library(easystats)
 library(ggplot2)
 library(ggdist)
+library(qs2)
 library(patchwork)
+
+# Check if split .qs2 files need to be combined (e.g. after a fresh git clone)
+split_qs2_script <- if (file.exists("split_qs2.R")) "split_qs2.R" else if (file.exists("../split_qs2.R")) "../split_qs2.R" else NULL
+if (!is.null(split_qs2_script)) {
+  source(split_qs2_script)
+  root_dir <- if (dir.exists("Angele_et_al_2022")) "." else ".."
+  check_and_combine_qs2(root_dir)
+}
 
 # Shared formatting helpers, reused when building the condensed (long-format)
 # tables: one row per condition/effect x parameter, with Greek symbols (μ, τ,
@@ -1009,11 +1018,11 @@ priors_classical <- c(
   prior(normal(0, 100), class = "b", coef = "PrimeDuration1"),
   prior(normal(0, 100), class = "b", coef = "Condition1:PrimeDuration1"),
 
-  # Exponential tail tau (log link): Intercept & effects
+  # Exponential tail tau (on log scale): Intercept & effects
   prior(normal(log(100), 0.5), class = "Intercept", dpar = "tau"),
   prior(normal(0, 0.5), class = "b", dpar = "tau"),
 
-  # Gaussian SD sigma (log link): Intercept
+  # Gaussian SD sigma (on log scale): Intercept
   prior(normal(log(60), 0.5), class = "Intercept", dpar = "sigma")
 )
 ```
@@ -1058,7 +1067,7 @@ To prevent initial value rejection and ensure reliable sampling across all chain
 #| echo: false
 
 # Subset data to determine random effect dimensions
-data_fit <- exp1_data_to_include %>%
+data_fit <- exp1_data_to_include |>
   filter(corr == 1 & StimulusType == "Word" & rt > 250 & rt < 1800)
 
 N_source <- length(unique(data_fit$source))
@@ -1111,7 +1120,7 @@ blmm_exp1_classical_rt <- brm(
   iter = 5000,
   chains = 4,
   prior = priors_classical,
-  family = rt_exgaussian(link = "identity", link_sigma = "log", link_tau = "log"), # {cogmod} family with identity/log links
+  family = rt_exgaussian(link = "identity", link_tau = "log", link_sigma = "log"), # {cogmod} family with identity/log links
   stanvars = rt_exgaussian_stanvars(), # Stan code injected into the model
   inits = init_classical,
   cores = 4,
@@ -1132,13 +1141,15 @@ As in the Simulation Example, we use `{modelbased}`'s `estimate_means()` and `es
 #| message: false
 #| warning: false
 
-exp1_rds_path <- here::here(
-  "ms",
-  "Angele_et_al_2022",
-  "blmm_exp1_classical_rt.rds"
-)
+exp1_qs2_path <- if (file.exists("Angele_et_al_2022/blmm_exp1_classical_rt.qs2")) {
+  "Angele_et_al_2022/blmm_exp1_classical_rt.qs2"
+} else if (file.exists("../Angele_et_al_2022/blmm_exp1_classical_rt.qs2")) {
+  "../Angele_et_al_2022/blmm_exp1_classical_rt.qs2"
+} else {
+  here::here("Angele_et_al_2022", "blmm_exp1_classical_rt.qs2")
+}
 
-fit_exp1_classical <- readRDS(exp1_rds_path)
+fit_exp1_classical <- qs_read(exp1_qs2_path)
 
 # Harmonizes contrast direction to "Unrelated - Identical" / "50 ms - 33 ms",
 # matching the sign of the raw population-level regression coefficients.
@@ -1217,6 +1228,7 @@ tt(real_means_tbl)
 ```{r}
 #| label: estimate-contrasts-real
 #| echo: false
+#| cache: true
 
 mu_main_cond <- flip_contrast(estimate_contrasts(
   fit_exp1_classical,
@@ -1429,21 +1441,21 @@ rownames(real_contrasts_display) <- NULL
 tt(real_contrasts_display)
 ```
 
-As shown in @tbl-real-contrasts, under the classical parameterization, the true Gaussian location $\mu$ shows a robust overall main effect of relatedness (`r get_val("Main Effect of Relatedness", "Mu")` ms, 95% CrI `r get_val("Main Effect of Relatedness", "Mu 95% CrI")`). Crucially, the main effect of prime duration on $\mu$ is **non-credible** (`r get_val("Main Effect of Prime Duration", "Mu")` ms, 95% CrI `r get_val("Main Effect of Prime Duration", "Mu 95% CrI")`, with the 95% CrI containing zero), in contrast to the location shift reported under the default parameterization. The model also reveals a credible interaction between relatedness and prime duration (`r get_val("Relatedness x Prime Duration Interaction", "Mu")` ms, 95% CrI `r get_val("Relatedness x Prime Duration Interaction", "Mu 95% CrI")`), indicating that the priming effect on $\mu$ was larger at 50 ms (`r get_val("Priming Effect at 50 ms", "Mu")` ms, 95% CrI `r get_val("Priming Effect at 50 ms", "Mu 95% CrI")`) than at 33 ms (`r get_val("Priming Effect at 33 ms", "Mu")` ms, 95% CrI `r get_val("Priming Effect at 33 ms", "Mu 95% CrI")`).
+As shown in @tbl-real-contrasts, under the classical parameterization, the true Gaussian location $\mu$ shows a robust overall main effect of relatedness (`r get_val("Main Effect of Relatedness", "Mu")` ms, 95% CrI `r get_val("Main Effect of Relatedness", "Mu 95% CrI")`). Unlike the effect reported as $\mu$ under the default parameterization, the main effect of prime duration on $\mu$ is non-credible under the classical parameterization (`r get_val("Main Effect of Prime Duration", "Mu")` ms, 95% CrI `r get_val("Main Effect of Prime Duration", "Mu 95% CrI")`, with the 95% CrI narrowly containing zero). The model also reveals a credible interaction between relatedness and prime duration (`r get_val("Relatedness x Prime Duration Interaction", "Mu")` ms, 95% CrI `r get_val("Relatedness x Prime Duration Interaction", "Mu 95% CrI")`), indicating that the priming effect on $\mu$ was larger at 50 ms (`r get_val("Priming Effect at 50 ms", "Mu")` ms, 95% CrI `r get_val("Priming Effect at 50 ms", "Mu 95% CrI")`) than at 33 ms (`r get_val("Priming Effect at 33 ms", "Mu")` ms, 95% CrI `r get_val("Priming Effect at 33 ms", "Mu 95% CrI")`).
 
-For the exponential component $\tau$, the main effect of relatedness is small and non-credible (`r get_val("Main Effect of Relatedness", "Tau")` ms, 95% CrI `r get_val("Main Effect of Relatedness", "Tau 95% CrI")`), as is the interaction term (`r get_val("Relatedness x Prime Duration Interaction", "Tau")` ms, 95% CrI `r get_val("Relatedness x Prime Duration Interaction", "Tau 95% CrI")`). Consequently, simple priming differences at 33 ms (`r get_val("Priming Effect at 33 ms", "Tau")` ms, 95% CrI `r get_val("Priming Effect at 33 ms", "Tau 95% CrI")`) and 50 ms (`r get_val("Priming Effect at 50 ms", "Tau")` ms, 95% CrI `r get_val("Priming Effect at 50 ms", "Tau 95% CrI")`) remain non-credible, consistent with Forster's [-@forster1998pros] savings hypothesis. However, the model reveals a credible main effect of prime duration (`r get_val("Main Effect of Prime Duration", "Tau")` ms, 95% CrI `r get_val("Main Effect of Prime Duration", "Tau 95% CrI")`), showing that increasing prime duration from 33 ms to 50 ms moderately compressed the exponential tail parameter $\tau$.
+For the exponential component $\tau$, the main effect of relatedness is small and non-credible (`r get_val("Main Effect of Relatedness", "Tau")` ms, 95% CrI `r get_val("Main Effect of Relatedness", "Tau 95% CrI")`), as is the interaction term (`r get_val("Relatedness x Prime Duration Interaction", "Tau")` ms, 95% CrI `r get_val("Relatedness x Prime Duration Interaction", "Tau 95% CrI")`). Consequently, the priming effect (i.e., the difference between related and unrelated prime conditions) on $\tau$ is non-credible at 33 ms (`r get_val("Priming Effect at 33 ms", "Tau")` ms, 95% CrI `r get_val("Priming Effect at 33 ms", "Tau 95% CrI")`) and 50 ms (`r get_val("Priming Effect at 50 ms", "Tau")` ms, 95% CrI `r get_val("Priming Effect at 50 ms", "Tau 95% CrI")`), consistent with Forster's [-@forster1998pros] savings hypothesis that would expect such an effect to show in $\mu$ rather than in $\tau$. However, the model reveals a credible main effect of prime duration on $\tau$ (`r get_val("Main Effect of Prime Duration", "Tau")` ms, 95% CrI `r get_val("Main Effect of Prime Duration", "Tau 95% CrI")`), showing that increasing prime duration from 33 ms to 50 ms moderately shortened the right tail.
 
 ### Comparison with Angele et al. (2023)
 
 Comparing these classical ex-Gaussian estimates with those originally reported by @angele2023 (the "Default brms E(RT)" column of @tbl-real-contrasts) highlights the practical consequences of model parameterization for theoretical inferences.
 
-1.  **Parameter Interpretation**: @angele2023 reported fixed effects for relatedness, prime duration, and their interaction from default {brms} under the assumption that `mu` represented the Gaussian location component $\mu_{\text{Gaussian}}$. In reality, `brms` default `mu` estimates $E(RT) = \mu_{\text{Gaussian}} + \tau$. Consequently, @angele2023 reported overall distributional mean differences under the label of Gaussian location shifts.
+1.  *Parameter Interpretation*. @angele2023 reported fixed effects for relatedness, prime duration, and their interaction from default {brms} under the assumption that `mu` represented the Gaussian location component $\mu_{\text{Gaussian}}$. Actually, the `brms` default `mu` estimates $E(RT) = \mu_{\text{Gaussian}} + \tau$. Consequently, @angele2023 interpreted overall differences in the distribution mean $E(RT)$ as changes in the Gaussian location $\mu_{\text{Gaussian}}$, when in fact they were a composite of changes in both $\mu_{\text{Gaussian}}$ and $\tau$.
 
-2.  **Divergent Conclusions on Prime Duration**: A critical theoretical discrepancy emerges regarding the main effect of prime duration. Based on their default {brms} model, @angele2023 concluded that increasing prime exposure duration from 33 ms to 50 ms produced a credible downward shift in the Gaussian location parameter $\mu$ ($b = -10.9$ ms, 95% CrI \[-14.5, -7.3\]). However, the classical parameterization reveals that the true main effect of prime duration on $\mu_{\text{Gaussian}}$ is **non-credible** (`r get_val("Main Effect of Prime Duration", "Mu")` ms, 95% CrI `r get_val("Main Effect of Prime Duration", "Mu 95% CrI")`, with the 95% CrI containing zero). Instead, the overall reduction in RTs at 50 ms prime duration was driven almost entirely by a compression of the exponential tail $\tau$ (`r get_val("Main Effect of Prime Duration", "Tau")` ms, 95% CrI `r get_val("Main Effect of Prime Duration", "Tau 95% CrI")`). Because default {brms} models $E(RT) = \mu_{\text{Gaussian}} + \tau$, the $-10.9$ ms effect reported by @angele2023 as a location shift was actually the composite sum of a non-credible $\mu$ shift (`r get_val("Main Effect of Prime Duration", "Mu")` ms) and a credible $\tau$ tail reduction (`r get_val("Main Effect of Prime Duration", "Tau")` ms).
+2.  **Prime Duration Effects**: While @angele2023's interpretation of most of the effects does not differ substantially from what the classical parameterization results indicate, there is one interesting and potentially theoretically relevant difference: Based on their default {brms} model, @angele2023 concluded that increasing prime exposure duration from 33 ms to 50 ms produced a credible downward shift in the Gaussian location parameter $\mu$ ($b = -10.9$ ms, 95% CrI \[-14.5, -7.3\]). However, the classical parameterization reveals that the true main effect of prime duration on $\mu_{\text{Gaussian}}$ is not credible (`r get_val("Main Effect of Prime Duration", "Mu")` ms, 95% CrI `r get_val("Main Effect of Prime Duration", "Mu 95% CrI")`, with the 95% CrI containing zero). Instead, our reanalysis shows that the overall reduction in RTs at 50 ms prime duration was driven almost entirely by a compression of the exponential tail $\tau$ (`r get_val("Main Effect of Prime Duration", "Tau")` ms, 95% CrI `r get_val("Main Effect of Prime Duration", "Tau 95% CrI")`). The effect on $E(RT)$ reported by @angele2023 as a location shift in $\mu$ was actually the composite sum of a non-credible $\mu$ shift (`r get_val("Main Effect of Prime Duration", "Mu")` ms) and a credible $\tau$ tail reduction (`r get_val("Main Effect of Prime Duration", "Tau")` ms).
 
 3.  **Priming Effects and Interaction**: For the priming manipulation, the main effect of relatedness on $\mu_{\text{Gaussian}}$ (`r get_val("Main Effect of Relatedness", "Mu")` ms, 95% CrI `r get_val("Main Effect of Relatedness", "Mu 95% CrI")`) and the interaction (`r get_val("Relatedness x Prime Duration Interaction", "Mu")` ms, 95% CrI `r get_val("Relatedness x Prime Duration Interaction", "Mu 95% CrI")`) closely mirror the $E(RT)$ effects reported by @angele2023 (main effect $\sim 31.5$ ms, interaction $\sim 19.3$ ms). The estimates for the two parameterizations align closely for the priming effect because $\tau$ showed no credible priming differences (`r get_val("Main Effect of Relatedness", "Tau")` ms, 95% CrI `r get_val("Main Effect of Relatedness", "Tau 95% CrI")`). When $\Delta \tau \approx 0$, changes in the distributional mean $\Delta E(RT)$ track changes in the Gaussian location $\Delta \mu$ nearly 1-to-1.
 
-4.  **Methodological Takeaway**: This empirical comparison demonstrates that misinterpreting default {brms} parameters can lead to subtle misattributions regarding *which* distributional component is altered by an experimental manipulation. In @angele2023, a tail-shortening effect of prime duration ($\Delta \tau =$ `r get_val("Main Effect of Prime Duration", "Tau")` ms) was attributed to the Gaussian location parameter (`mu`). Adopting the classical parameterization resolves this misattribution and ensures that theoretical claims align with the underlying distributional parameters.
+4.  **Summary**: This empirical comparison demonstrates that misinterpreting default {brms} parameters can lead to subtle misattributions regarding *which* distributional component is altered by an experimental manipulation. In @angele2023, a tail-shortening effect of prime duration ($\Delta \tau =$ `r get_val("Main Effect of Prime Duration", "Tau")` ms) was attributed to the Gaussian location parameter (`mu`). Adopting the classical parameterization resolves this misattribution and ensures that theoretical claims align with the underlying distributional parameters.
 
 ## Conclusion
 

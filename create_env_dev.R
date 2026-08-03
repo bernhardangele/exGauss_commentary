@@ -14,7 +14,8 @@ required_packages <- c(
   "marginaleffects",
   "reformulas",
   "collapse",
-  "ragg"
+  "ragg",
+  "qs2"
 )
 
 library(rix)
