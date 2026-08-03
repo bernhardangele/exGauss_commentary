@@ -935,8 +935,8 @@ mu_lookup <- data.frame(Blur = c("Clear", "Low-Blur"), mu = sim_params$mu)
 # arrow can span between them without ggplot's per-facet annotate() duplication.
 p_dist <- ggplot(d, aes(x = rt, fill = Blur, colour = Blur)) +
   ggdist::stat_slab(alpha = 0.55, linewidth = 0, normalize = "panels") +
-  geom_vline(
-    data = mu_lookup, aes(xintercept = mu, colour = Blur),
+  geom_segment(
+    data = mu_lookup, aes(x = mu, xend = mu, y = 0, yend = 1.05, colour = Blur),
     linetype = "dashed", linewidth = 0.7, show.legend = FALSE
   ) +
   annotate(
