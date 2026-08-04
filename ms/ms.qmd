@@ -145,7 +145,7 @@ The ex-Gaussian model can be fit within a Bayesian framework relatively easily u
 The central problem is that the parameter labeled $\mu$ in the default {brms} ex-Gaussian model does not correspond to the mean of the Gaussian component in the conventional parameterization. Instead, the quantity modeled as $\mu$ in {brms} represents the mean of the full ex-Gaussian distribution. Under the conventional parameterization, this quantity is equal to $\mu_{\mathrm{Gaussian}} + \tau$. Consequently, regression effects estimated for the default $\mu$ parameter reflect changes in a composite quantity that combines the Gaussian location and exponential tail components. Such effects therefore cannot be interpreted directly as changes in the Gaussian component or in typical response speed. To recover the conventional Gaussian mean, it is necessary to derive it from the model parameters as $\mu_{\mathrm{Gaussian}} =
 \mu_{\mathrm{brms}} - \tau$ or to specify an alternative parameterization that models the conventional ex-Gaussian parameters directly.
 
-In this commentary, we demonstrate what the default parameterization of the ex-Gaussian model in {brms} actually provides and then show how to specify the model so that its parameters correspond to the conventional ex-Gaussian parameters used in reaction-time research. The goal is to improve the accuracy and interpretability of inferences drawn from these models. This issue is particularly important because the ex-Gaussian distribution is widely used to distinguish changes in the central portion of the RT distribution from changes in its positively skewed tail.
+In this paper, we demonstrate what the default parameterization of the ex-Gaussian model in {brms} actually represents, and then show how to reparameterize the model so that $\mu$ corresponds to the location of the Gaussian component — the conventional ex-Gaussian parameter used in RT research — rather than the mean of the full distribution. We illustrate this first with a simulated dataset and then through reanalysis of a published finding. Our goal is to improve the accuracy and interpretability of inferences drawn from these models. This issue is particularly important because the ex-Gaussian distribution is widely used to distinguish changes in the central portion of the RT distribution from changes in its positively skewed tail.
 
 ## Simulation Example
 
@@ -162,7 +162,13 @@ To demonstrate the issue with fitting the default ex-Gaussian model in {brms}, w
 #| warning: false
 
 # Check if split .qs2 files need to be combined (e.g. after a fresh git clone)
-split_qs2_script <- if (file.exists("split_qs2.R")) "split_qs2.R" else if (file.exists("../split_qs2.R")) "../split_qs2.R" else NULL
+split_qs2_script <- if (file.exists("split_qs2.R")) {
+  "split_qs2.R"
+} else if (file.exists("../split_qs2.R")) {
+  "../split_qs2.R"
+} else {
+  NULL
+}
 if (!is.null(split_qs2_script)) {
   source(split_qs2_script)
   # _quarto.yml only exists at the project root, so this is unambiguous
@@ -177,7 +183,9 @@ if (!is.null(split_qs2_script)) {
 # project root or ms/, depending on execute-dir) back to the project root,
 # so appending "ms/fits" resolves correctly either way.
 fits_dir <- file.path(root_dir, "ms", "fits")
-if (!dir.exists(fits_dir)) dir.create(fits_dir, recursive = TRUE)
+if (!dir.exists(fits_dir)) {
+  dir.create(fits_dir, recursive = TRUE)
+}
 
 # Shared formatting helpers, reused when building the condensed (long-format)
 # tables: one row per condition/effect x parameter, with Greek symbols (μ, τ,
@@ -509,9 +517,9 @@ fit_brms <- brm(
 
 #### Estimating Ex-Gaussian Parameters with `{easystats}`
 
-The `{modelbased}` package [@makowski2025modelbased], which is part of the `{easystats}` ecosystem [@ludecke2019insight], can easily be used to obtain condition-specific posterior estimates from a fitted model. The `estimate_means()` function returns estimated parameters for each condition, back-transformed, so estimates are presented on time scale, whereas `estimate_contrasts()` computes differences between conditions.
+The `{modelbased}` package [@makowski2025modelbased], which is part of the `{easystats}` ecosystem [@ludecke2019insight], can easily be used to obtain condition-specific posterior estimates from a fitted model. The `estimate_means()` function returns estimated parameters for each condition, back-transformed, so estimates are presented on the time scale, whereas `estimate_contrasts()` computes differences between conditions. To conserve space this code is not shown here, but interested readers can go to the GitHub repo and view the code.
 
-Throughout this commentary, we treat an effect as reflecting a credible difference when its 95% credible interval excludes zero and its probability of direction (pd) exceeds .975; when either condition fails to hold, we describe the effect as non-credible or uncertain.
+Throughout this paper, we treat an effect as reflecting a credible difference when its 95% credible interval excludes zero and its probability of direction (pd) [i.e., the probability that the posterior distribution is strictly positive or negative; @makowski2025modelbased] exceeds 97.5%. When either condition fails to hold, we describe the effect as non-credible or uncertain.
 
 As shown in @tbl-exgauss, the present data were generated so that the two conditions have the same expected reaction time but differ in the Gaussian and exponential components of the ex-Gaussian distribution.
 
@@ -746,7 +754,11 @@ fit_brms_new <- brm(
   ),
   data = d,
   prior = priors_classical,
-  family = rt_exgaussian(link = "identity", link_sigma = "log", link_tau = "log"), # {cogmod} family with identity/log links
+  family = rt_exgaussian(
+    link = "identity",
+    link_sigma = "log",
+    link_tau = "log"
+  ), # {cogmod} family with identity/log links
   stanvars = rt_exgaussian_stanvars(), # Stan code injected into the model
   chains = 2,
   iter = 2000,
@@ -936,25 +948,43 @@ mu_lookup <- data.frame(Blur = c("Clear", "Low-Blur"), mu = sim_params$mu)
 p_dist <- ggplot(d, aes(x = rt, fill = Blur, colour = Blur)) +
   ggdist::stat_slab(alpha = 0.55, linewidth = 0, normalize = "panels") +
   geom_segment(
-    data = mu_lookup, aes(x = mu, xend = mu, y = 0, yend = 1.05, colour = Blur),
-    linetype = "dashed", linewidth = 0.7, show.legend = FALSE
+    data = mu_lookup,
+    aes(x = mu, xend = mu, y = 0, yend = 1.05, colour = Blur),
+    linetype = "dashed",
+    linewidth = 0.7,
+    show.legend = FALSE
   ) +
   annotate(
     "segment",
-    x = min(mu_lookup$mu), xend = max(mu_lookup$mu), y = 1.15, yend = 1.15,
+    x = min(mu_lookup$mu),
+    xend = max(mu_lookup$mu),
+    y = 1.15,
+    yend = 1.15,
     arrow = grid::arrow(length = grid::unit(1.6, "mm"), ends = "both"),
-    linewidth = 0.6, colour = "grey20"
+    linewidth = 0.6,
+    colour = "grey20"
   ) +
   annotate(
     "text",
-    x = mean(mu_lookup$mu), y = 1.25,
+    x = mean(mu_lookup$mu),
+    y = 1.25,
     label = paste0("Δμ = ", diff(range(mu_lookup$mu)), " ms"),
-    size = 4.4, fontface = "bold", colour = "grey20"
+    size = 4.4,
+    fontface = "bold",
+    colour = "grey20"
   ) +
   scale_fill_manual(values = c("Clear" = "darkgreen", "Low-Blur" = "darkred")) +
-  scale_colour_manual(values = c("Clear" = "darkgreen", "Low-Blur" = "darkred")) +
+  scale_colour_manual(
+    values = c("Clear" = "darkgreen", "Low-Blur" = "darkred")
+  ) +
   coord_cartesian(xlim = c(300, 900), ylim = c(0, 1.4), clip = "off") +
-  labs(x = "Reaction time (ms)", y = NULL, title = "Simulated Distributions (μ differs by 50 ms)", fill = NULL, colour = NULL) +
+  labs(
+    x = "Reaction time (ms)",
+    y = NULL,
+    title = "Simulated Distributions (μ differs by 50 ms)",
+    fill = NULL,
+    colour = NULL
+  ) +
   theme_minimal(base_size = 12) +
   theme(
     axis.text.y = element_blank(),
@@ -966,7 +996,7 @@ p_dist <- ggplot(d, aes(x = rt, fill = Blur, colour = Blur)) +
 
 # Verdict boxes: pull the actual Blur contrast from each fitted model rather
 # than hardcoding the estimate/CI/credibility.
-default_mu_contrast   <- as.data.frame(overall_difference)
+default_mu_contrast <- as.data.frame(overall_difference)
 classical_mu_contrast <- as.data.frame(mu_difference)
 
 # pd >= .975 is the conventional threshold (roughly equivalent to a two-sided
@@ -974,46 +1004,103 @@ classical_mu_contrast <- as.data.frame(mu_difference)
 pd_threshold <- 0.975
 is_credible <- function(pd) pd >= pd_threshold
 verdict_label <- function(est, pd) {
-  if (pd < pd_threshold) "UNCERTAIN" else if (est > 0) "EFFECT ABOVE 0" else "EFFECT BELOW 0"
+  if (pd < pd_threshold) {
+    "UNCERTAIN"
+  } else if (est > 0) {
+    "EFFECT ABOVE 0"
+  } else {
+    "EFFECT BELOW 0"
+  }
 }
 
 make_verdict_box <- function(title, est, ci_low, ci_high, pd, credible) {
   txt <- paste0(
-    title, "\n",
-    "Δ = ", fmt_num(est), " ms   95% CrI ", fmt_ci(ci_low, ci_high), "   pd = ", fmt_pd(pd), "\n",
+    title,
+    "\n",
+    "Δ = ",
+    fmt_num(est),
+    " ms   95% CrI ",
+    fmt_ci(ci_low, ci_high),
+    "   pd = ",
+    fmt_pd(pd),
+    "\n",
     verdict_label(est, pd)
   )
   fill_colour <- if (credible) "#d4edda" else "#f0f0f0"
   ggplot() +
-    annotate("rect", xmin = 0, xmax = 1, ymin = 0, ymax = 1, fill = fill_colour, colour = "grey30", linewidth = 0.8) +
-    annotate("text", x = 0.5, y = 0.5, label = txt, size = 3.8, fontface = "bold", lineheight = 1.3, colour = "grey10") +
+    annotate(
+      "rect",
+      xmin = 0,
+      xmax = 1,
+      ymin = 0,
+      ymax = 1,
+      fill = fill_colour,
+      colour = "grey30",
+      linewidth = 0.8
+    ) +
+    annotate(
+      "text",
+      x = 0.5,
+      y = 0.5,
+      label = txt,
+      size = 3.8,
+      fontface = "bold",
+      lineheight = 1.3,
+      colour = "grey10"
+    ) +
     theme_void() +
-    coord_cartesian(xlim = c(0, 1), ylim = c(0, 1), expand = FALSE, clip = "off")
+    coord_cartesian(
+      xlim = c(0, 1),
+      ylim = c(0, 1),
+      expand = FALSE,
+      clip = "off"
+    )
 }
 
 p_default_box <- make_verdict_box(
   "Default {brms}\n(μ = E(RT))",
-  default_mu_contrast$Mean, default_mu_contrast$CI_low, default_mu_contrast$CI_high, default_mu_contrast$pd,
+  default_mu_contrast$Mean,
+  default_mu_contrast$CI_low,
+  default_mu_contrast$CI_high,
+  default_mu_contrast$pd,
   is_credible(default_mu_contrast$pd)
 )
 
 p_classical_box <- make_verdict_box(
   "Classical ex-Gaussian\n(μ = Gaussian location)",
-  classical_mu_contrast$Mean, classical_mu_contrast$CI_low, classical_mu_contrast$CI_high, classical_mu_contrast$pd,
+  classical_mu_contrast$Mean,
+  classical_mu_contrast$CI_low,
+  classical_mu_contrast$CI_high,
+  classical_mu_contrast$pd,
   is_credible(classical_mu_contrast$pd)
 )
 
 p_banner <- ggplot() +
-  annotate("rect", xmin = 0, xmax = 1, ymin = 0, ymax = 1, fill = "#fff3cd", colour = "grey30", linewidth = 0.8) +
   annotate(
-    "text", x = 0.5, y = 0.5,
+    "rect",
+    xmin = 0,
+    xmax = 1,
+    ymin = 0,
+    ymax = 1,
+    fill = "#fff3cd",
+    colour = "grey30",
+    linewidth = 0.8
+  ) +
+  annotate(
+    "text",
+    x = 0.5,
+    y = 0.5,
     label = "The default {brms} family does not capture the difference in μ!",
-    size = 5, fontface = "bold", colour = "#664d03"
+    size = 5,
+    fontface = "bold",
+    colour = "#664d03"
   ) +
   theme_void() +
   coord_cartesian(xlim = c(0, 1), ylim = c(0, 1), expand = FALSE)
 
-p_dist / (p_default_box | p_classical_box) / p_banner +
+p_dist /
+  (p_default_box | p_classical_box) /
+  p_banner +
   patchwork::plot_layout(heights = c(2.2, 0.8, 0.5))
 ```
 
@@ -1140,7 +1227,11 @@ blmm_exp1_classical_rt <- brm(
   iter = 5000,
   chains = 4,
   prior = priors_classical,
-  family = rt_exgaussian(link = "identity", link_tau = "log", link_sigma = "log"), # {cogmod} family with identity/log links
+  family = rt_exgaussian(
+    link = "identity",
+    link_tau = "log",
+    link_sigma = "log"
+  ), # {cogmod} family with identity/log links
   stanvars = rt_exgaussian_stanvars(), # Stan code injected into the model
   inits = init_classical,
   cores = 4,
@@ -1161,7 +1252,9 @@ As in the Simulation Example, we use `{modelbased}`'s `estimate_means()` and `es
 #| message: false
 #| warning: false
 
-exp1_qs2_path <- if (file.exists("Angele_et_al_2022/blmm_exp1_classical_rt.qs2")) {
+exp1_qs2_path <- if (
+  file.exists("Angele_et_al_2022/blmm_exp1_classical_rt.qs2")
+) {
   "Angele_et_al_2022/blmm_exp1_classical_rt.qs2"
 } else if (file.exists("../Angele_et_al_2022/blmm_exp1_classical_rt.qs2")) {
   "../Angele_et_al_2022/blmm_exp1_classical_rt.qs2"
