@@ -1580,7 +1580,7 @@ Comparing these classical ex-Gaussian estimates with those originally reported b
 
 ## Conclusion
 
-With this commentary, we hope to encourage researchers to use the appropriate ex-Gaussian parameterization when modeling reaction-time data with the {brms} package. The ex-Gaussian distribution provides a powerful framework for moving beyond analyses of the mean by separating differences in the central portion of the reaction-time distribution from differences in its right tail.
+With this discussion, we hope to encourage researchers to use the appropriate ex-Gaussian parameterization when modeling reaction-time data with the {brms} package. The ex-Gaussian distribution provides a powerful framework for moving beyond analyses of the mean by separating differences in the central portion of the reaction-time distribution from differences in its right tail.
 
 However, this flexibility also requires careful attention to model parameterization. In particular, researchers should not assume that parameters with familiar labels necessarily have the same interpretation across software implementations. Researchers should therefore examine the statistical definition and underlying implementation of a model before fitting it and interpreting its parameters. This is especially important when using flexible modeling software that may adopt parameterizations that differ from those commonly used in a particular research literature. We hope this commentary serves both as a practical guide to fitting the classical ex-Gaussian model in {brms} and as a broader reminder that convenient software defaults should not replace careful consideration of what a model actually estimates.
 
