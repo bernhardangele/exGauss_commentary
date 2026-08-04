@@ -1104,7 +1104,7 @@ p_dist /
   patchwork::plot_layout(heights = c(2.2, 0.8, 0.5))
 ```
 
-## From Simulation to Application
+## From Simulation to Application: Reanalysis of @angele2023
 
 In order to demonstrate how the difference between parameterizations can affect the interpretation of real data, we re-analyze Experiment 1 from @angele2023. The main focus of @angele2023's study was to test whether the masked priming paradigm can be successfully implemented in a Javascript-based online experiment. However, @angele2023 also attempt to make a theoretical contribution by using the ex-Gaussian model to evaluate @forster1998pros's savings hypothesis. @forster1998pros argued that, if the prime is identical to the target, having pre-processed the prime will allow participants to respond faster. In this case, the whole distribution of reaction times should be shifted to the left for the related condition compared to the unrelated condition, i.e., there should be an effect on $\mu$, rather than on the slower responses, i.e., $\tau$. The experiment had a more complex design than the previous examples: participants completed a masked identity priming lexical decision task across two prime exposure durations (33 ms vs. 50 ms) and two priming conditions (Identical vs. Unrelated).
 
