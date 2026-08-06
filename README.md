@@ -194,6 +194,56 @@ To do it in one shot without leaving your normal shell:
 nix-shell --pure --run "cd ms && quarto render"
 ```
 
+## Reproducing with Docker + Nix (no local Nix install needed)
+
+If you don't want to install Nix on your own machine at all, `Dockerfile` builds
+the exact same pinned `default.nix` environment inside a disposable Ubuntu
+container — Nix, R, Quarto, TeX Live, and CmdStan, all baked in at image-build
+time. All you need locally is Docker (Desktop or Engine).
+
+**1. Build the image** (from the repo root):
+
+```bash
+docker build -t exgauss-render .
+```
+
+This installs Nix inside the container, runs `nix-build` against the committed
+`default.nix`, and installs CmdStan — the slow part. Building TeX Live + brms +
+cmdstanr + the custom easystats packages from source can be memory-hungry; if
+the build fails with `cannot allocate memory`, give Docker more RAM under
+Settings → Resources → Advanced (6–8GB+).
+
+**2. Run it, with output saved back to your local repo:**
+
+```bash
+docker run --rm -it -v "$(pwd):/project" exgauss-render
+```
+
+This drops you into an interactive, reproducible `nix-shell` inside the
+container. From there:
+
+```bash
+cd ms && quarto render
+```
+
+The `-v "$(pwd):/project" ` bind-mounts this repo into the container at
+`/project` (its `WORKDIR`), so `ms.html`/`ms.pdf`/`ms.docx` are written
+directly back to your local filesystem, not lost when the container exits.
+Run `docker run` from the repo root so `$(pwd)` resolves correctly.
+
+**Or render in one shot**, no interactive session — the container exits as
+soon as the render finishes:
+
+```bash
+docker run --rm -v "$(pwd):/project" exgauss-render \
+  nix-shell default.nix --pure --run "cd ms && quarto render"
+```
+
+Rebuild the image (`docker build -t exgauss-render .` again) whenever
+`default.nix`/`create_env_dev.R` change — Docker's layer cache means it only
+redoes the `nix-build`/CmdStan steps if the files that feed them changed, not
+every time.
+
 ## Real-data example: Angele et al. (2022)
 
 `Angele_et_al_2022/` applies the same default-vs-classical ex-Gaussian comparison
