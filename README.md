@@ -107,7 +107,49 @@ see `create_env_dev.R`) that pins the exact versions of R, Quarto, TeX Live, Cmd
 and every R package (including `cogmod` and `cmdstanr` from their pinned
 GitHub commits) used to build this manuscript.
 
-**0. Install Nix** (skip if `nix --version` already works):
+> **Platform note:** this has been tested on Linux and macOS. Nix doesn't run
+> natively on Windows — on Windows you'll need [WSL](https://learn.microsoft.com/en-us/windows/wsl/install)
+> and should follow the Linux instructions below from inside your WSL distro.
+> Full walkthrough: [Installing Nix on Windows via WSL](https://docs.ropensci.org/rix/articles/setting-up-linux-windows.html) (`{rix}` docs).
+
+<details>
+<summary><b>Windows: install WSL2 + Nix first</b> (click to expand)</summary>
+
+1. **Install WSL2** — in an administrator PowerShell:
+   ```powershell
+   wsl --install
+   ```
+2. **Enable systemd** (recommended) — inside the WSL Ubuntu shell:
+   ```bash
+   sudo -i
+   nano /etc/wsl.conf
+   ```
+   Add:
+   ```ini
+   [boot]
+   systemd=true
+   ```
+   Save (`Ctrl-O`, `Ctrl-X`), then from PowerShell run `wsl --shutdown` and relaunch
+   Ubuntu from the Start menu.
+3. **Install Nix** — inside WSL, run:
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf \
+        -L https://install.determinate.systems/nix | \
+       sh -s -- install --no-confirm --extra-conf "
+   trusted-users = root $USER
+   substituters = https://cache.nixos.org https://rstats-on-nix.cachix.org
+   trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= rstats-on-nix.cachix.org-1:vdiiVgocg6WeJrODIqdprZRUrhi1JzhBnXv7aWI6+F0="
+   ```
+   (This also pre-configures the `rstats-on-nix` Cachix cache that `default.nix`
+   relies on for prebuilt R package binaries.) If you skipped enabling systemd
+   in step 2, append `--init none` to this command instead.
+
+Once Nix is installed inside WSL, continue with the steps below from that same
+WSL shell — everything from here on is identical to the Linux/macOS workflow.
+
+</details>
+
+**0. Install Nix** (skip if `nix --version` already works; Windows users see above):
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
@@ -139,11 +181,92 @@ anyone else would get from the same file, regardless of what's installed on thei
 machine. The shell hook automatically runs `install_cmdstan.R` to make sure CmdStan
 is built on first entry.
 
+> **cmdstanr conflicts:** this is especially important if you already have
+> `cmdstanr`/CmdStan installed on your system outside of Nix. Without `--pure`,
+> `nix-shell` merges the Nix environment on top of your normal one rather than
+> replacing it, so your machine's existing R library paths and CmdStan
+> installation can leak in and shadow (or clash with) the versions pinned here.
+> Always use `--pure` if you have a system-level cmdstanr/CmdStan already set up.
+
 To do it in one shot without leaving your normal shell:
 
 ```bash
 nix-shell --pure --run "cd ms && quarto render"
 ```
+
+## Reproducing with Docker + Positron (Dev Container)
+
+For an even more turnkey setup than a bare `nix-shell`, this repo also ships a
+[dev container](https://containers.dev) (`Dockerfile` + `.devcontainer/devcontainer.json`)
+that installs Nix inside a disposable Ubuntu container, builds the exact
+`default.nix` environment, and bakes in CmdStan — all before you ever open the
+project. The same setup works unmodified on **GitHub Codespaces**.
+
+**What the image does** (see `Dockerfile`):
+
+1. Installs Nix via the [Determinate Systems installer](https://install.determinate.systems),
+   with sandboxing disabled and pointed at the `rstats-on-nix` Cachix binary
+   cache so R packages/TeX Live download prebuilt rather than compiling from
+   source.
+2. Runs `nix-build` against the committed `default.nix` to materialize the
+   pinned R/Quarto/TeX Live/CmdStan environment.
+3. Installs CmdStan into the image (`install_cmdstan.R`) so the container is
+   ready to sample immediately, instead of waiting on first shell entry.
+4. Generates stable wrapper scripts at `/usr/local/bin/{R,Rscript,quarto,pandoc}`
+   that source the pinned environment and exec the real nix-store binary. This
+   makes R/Quarto/pandoc discoverable on `PATH` without ever running
+   `nix-shell` manually, and the wrappers survive version bumps in
+   `default.nix` — the *path* never changes, only what it internally points to.
+
+**Opening it in Positron**
+
+Positron's native Dev Containers support is still experimental and must be
+enabled first:
+
+1. Add to Positron's settings (Command Palette → Preferences: Open User
+   Settings (JSON); on macOS this is
+   `~/Library/Application Support/Positron/User/settings.json`):
+   ```json
+   { "dev.containers.enable": true }
+   ```
+2. Open this repo's folder in Positron. It should prompt **"Reopen in
+   Container"** — click it, or run **Dev Containers: Reopen in Container**
+   from the Command Palette.
+3. Requires Docker Desktop (or Podman) running locally, with enough memory
+   allocated — building TeX Live + brms + cmdstanr + the custom easystats
+   packages from source can exhaust Docker Desktop's default VM memory. Bump
+   it to at least 6–8GB under Settings → Resources → Advanced if the build
+   fails with `cannot allocate memory`.
+4. After any change to the `Dockerfile` (or the first time), rebuild via
+   **Dev Containers: Rebuild Container**. The slow `nix-build`/CmdStan layers
+   are cached by Docker, so most rebuilds only re-run whatever changed.
+
+**Known quirks of Positron's dev container support**
+
+- Positron mounts the workspace at its own default path
+  (`/workspaces/exGauss_commentary`), **ignoring** this repo's
+  `workspaceMount`/`workspaceFolder` overrides in `devcontainer.json`. The
+  `/project` directory baked into the image via `COPY . /project` at build
+  time is a **stale snapshot** from whenever the image was built, not the
+  live, editable copy — always work out of `/workspaces/exGauss_commentary`.
+- The `customizations.vscode` block (auto-installing the R/Quarto/TOML
+  extensions) isn't applied by Positron's native implementation — it only
+  takes effect if this same `devcontainer.json` is opened in plain VS Code
+  or GitHub Codespaces instead.
+- Positron's own Render/Preview button runs its **bundled** Quarto (shipped
+  with the Positron server), not the nix-pinned version from `default.nix`.
+  It's convenient for quick visual iteration while editing, but the
+  authoritative, reproducible render is still:
+  ```bash
+  nix-shell default.nix --pure --run "cd ms && quarto render"
+  ```
+  Switching between the two without clearing the cache can crash Positron's
+  render with a Deno KV deserialization error (different Quarto versions
+  writing an incompatible project cache) — if that happens, delete `.quarto/`
+  and re-render.
+- The container is fully isolated from your host machine: whatever R/Quarto
+  versions are installed locally are invisible from inside it, and vice
+  versa — only `default.nix`'s pins matter once you're connected.
 
 ## Real-data example: Angele et al. (2022)
 
