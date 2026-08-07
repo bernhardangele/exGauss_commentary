@@ -494,6 +494,8 @@ colnames(priors_table) <- c(
 tt(priors_table)
 ```
 
+In {brms}, the `bf()` function combines separate linear-model formulas for each parameter of the response distribution into a single distributional-formula object passed to `brm()`. For the ex-Gaussian family, this lets `mu`, `sigma`, and `beta` each be modeled by their own predictors within one call: below, `rt ~ Blur` models `mu` as a function of Blur, `sigma ~ 1` holds the Gaussian standard deviation constant across conditions, and `beta ~ Blur` allows the exponential mean to vary by Blur as well. The model is fit with 2 MCMC chains of 2,000 iterations each (including 500 warmup iterations), more than sufficient for a model this simple.
+
 The model can then be fit as follows (@lst-fit-default):
 
 ```{r}
@@ -507,10 +509,10 @@ fit_brms <- brm(
     beta ~ Blur # exponential mean (the classical tau), allowed to vary
   ),
   data = d,
-  prior = priors_default,
+  prior = priors_default, # priors from above
   family = exgaussian(), # brms' built-in ex-Gaussian family
   chains = 2,
-  iter = 2000,
+  iter = 2000, 
   warmup = 500,
   backend = "cmdstanr",
   cores = 4,
@@ -524,7 +526,7 @@ fit_brms <- brm(
 
 The `{modelbased}` package [@makowski2025modelbased], which is part of the `{easystats}` ecosystem [@ludecke2019insight], can easily be used to obtain condition-specific posterior estimates from a fitted model. The `estimate_means()` function returns estimated parameters for each condition, back-transformed, so estimates are presented on the scale of interest (here milliseconds), whereas `estimate_contrasts()` computes differences between conditions. To conserve space this code is not shown here, but interested readers can go to the GitHub repo and view the code.
 
-Throughout this paper, we treat an effect as reflecting a credible difference when its 95% credible interval excludes zero and its probability of direction (pd) [i.e., the probability that the posterior distribution is strictly positive or negative; @makowski2025modelbased] exceeds 97.5%. When either condition fails to hold, we describe the effect as non-credible or uncertain.
+Throughout this paper, we treat an effect as reflecting a credible difference when its 95% credible interval excludes zero and its probability of direction (pd) [i.e., the probability that the posterior distribution is strictly positive or negative) [@makowski2025modelbased] exceeds ~97%. When either condition fails to hold, we describe the effect as non-credible or uncertain.
 
 As shown in @tbl-exgauss, the present data were generated so that the two conditions have the same expected reaction time but differ in the Gaussian and exponential components of the ex-Gaussian distribution.
 
@@ -606,7 +608,6 @@ default_means_tbl <- rbind(
       default_means_mu$CI_low,
       default_means_mu$CI_high
     ),
-    pd = fmt_pd(default_means_mu$pd),
     check.names = FALSE
   ),
   data.frame(
@@ -617,7 +618,6 @@ default_means_tbl <- rbind(
       default_means_beta$CI_low,
       default_means_beta$CI_high
     ),
-    pd = fmt_pd(default_means_beta$pd),
     check.names = FALSE
   )
 )
@@ -754,7 +754,7 @@ priors_classical <- c(
 )
 ```
 
-The model is then fit using (@lst-fit-classical):
+As before, `bf()` combines the per-parameter formulas into a single distributional model, but now `mu` is the Gaussian location itself, `tau` (rather than `beta`) carries the exponential-mean submodel, and `sigma` is estimated explicitly via its own formula rather than left to a family default. The model is then fit using (@lst-fit-classical):
 
 ```{r}
 #| label: fit-brms-classical
@@ -1025,7 +1025,7 @@ pd_threshold <- 0.975
 is_credible <- function(pd) pd >= pd_threshold
 verdict_label <- function(est, pd) {
   if (pd < pd_threshold) {
-    "UNCERTAIN"
+    "NON-CREDIBLE"
   } else if (est > 0) {
     "EFFECT ABOVE 0"
   } else {
@@ -1326,7 +1326,6 @@ real_means_tbl <- rbind(
       real_means_mu$CI_low,
       real_means_mu$CI_high
     ),
-    pd = fmt_pd(real_means_mu$pd),
     check.names = FALSE
   ),
   data.frame(
@@ -1338,7 +1337,6 @@ real_means_tbl <- rbind(
       real_means_tau$CI_low,
       real_means_tau$CI_high
     ),
-    pd = fmt_pd(real_means_tau$pd),
     check.names = FALSE
   )
 )
