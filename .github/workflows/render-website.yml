@@ -1,0 +1,93 @@
+name: Render paper with Nix and Quarto
+
+on:
+  push:
+    branches:
+      - main
+
+# Needed for the official Pages artifact deploy (no docs/ folder or branch
+# commit required).
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          logger: pretty
+          log-directives: nix_installer=trace
+          backtrace: full
+
+      # Public, read-only binary cache for the rstats-on-nix nixpkgs fork
+      # that default.nix pins to. Without this, every R/Stan package would
+      # be built from source instead of fetched pre-built.
+      - name: Use rstats-on-nix binary cache
+        uses: cachix/cachix-action@v15
+        with:
+          name: rstats-on-nix
+
+      # positron-bin (the Positron IDE binary) is only needed for local
+      # interactive development, not for headless rendering, and pulling it
+      # adds unnecessary time to CI.
+      - name: Drop the Positron IDE binary from the Nix environment
+        run: sed -i '/positron-bin/d' default.nix
+
+      - name: Build the pinned Nix environment
+        run: nix-build --cores 2 --max-jobs 1
+
+      # CmdStan is installed by default.nix's shellHook (Rscript
+      # install_cmdstan.R) the first time the shell is entered. Caching
+      # ~/.cmdstan across runs means it's only compiled once.
+      - name: Cache CmdStan
+        uses: actions/cache@v4
+        with:
+          path: ~/.cmdstan
+          key: cmdstan-2.37.0-${{ runner.os }}
+
+      # Renders every format declared in _quarto.yml (apaquarto-docx,
+      # apaquarto-typst, apaquarto-html) for ms/ms.qmd.
+      - name: Render manuscript
+        run: nix-shell default.nix --run "quarto render"
+
+      # Stage only the rendered output for Pages -- not ms.qmd, fits/, or
+      # ms_cache/ (the knitr execute cache, which can grow to several GB
+      # locally and has no business being published).
+      - name: Stage site
+        run: |
+          mkdir -p _site
+          cp ms/ms.html _site/index.html
+          cp ms/ms.docx _site/ms.docx
+          cp ms/ms.pdf _site/ms.pdf
+          cp -r ms/ms_files _site/ms_files
+          cp -r ms/_extensions _site/_extensions
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
