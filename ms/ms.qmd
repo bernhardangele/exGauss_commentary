@@ -1185,11 +1185,8 @@ tt(priors_table_real)
 #| echo: false
 
 # Subset data to determine random effect dimensions
-data_fit <- exp1_data_to_include |>
+data_fit <- exp1_data_to_include |> # find data here https://github.com/jgeller112/exGauss_commentary/blob/main/Angele_et_al_2022
   filter(corr == 1 & StimulusType == "Word" & rt > 250 & rt < 1800)
-
-N_source <- length(unique(data_fit$source))
-N_target <- length(unique(data_fit$Target))
 
 ```
 
