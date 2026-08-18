@@ -10,6 +10,7 @@ AGENTS.md
 
 # Large model output files
 *.qs2
+!Angele_et_al_2022/exp1_data.qs2
 
 # Cached brms fits for the simulated-data models (regenerated on first render)
 ms/fits/
