@@ -378,12 +378,6 @@ ggplot(d, aes(x = rt)) +
     linewidth = 0.4,
     colour = "grey45"
   ) +
-  geom_text(
-    data = annot,
-    aes(x = full_mean, y = -0.55, label = "entire distribution"),
-    size = 3.3,
-    colour = "grey30"
-  ) +
   facet_wrap(~Blur, ncol = 1) +
   scale_fill_manual(
     values = c("Clear" = "darkgreen", "Low-Blur" = "darkred"),
@@ -1183,11 +1177,7 @@ priors_table_real <- data.frame(
 tt(priors_table_real)
 ```
 
-### Initial Values Specification
 
-When fitting complex hierarchical ex-Gaussian models with random effects on parameters constrained to be positive (such as $\tau$ and $\sigma$), Stan's default unconstrained random initialization (in $[-2, 2]$) can cause severe numerical instability. Standard deviations randomly drawn near the upper end of this range can generate extreme individual-level parameter deviations, causing MCMC chains to immediately reject initial values (`log probability evaluates to log(0)`) or fail to start.
-
-To prevent initial value rejection and ensure reliable sampling across all chains, we supply an explicit initialization function (`init_classical`) that sets reasonable starting values for all model parameters. The full code for this function is omitted here for brevity but can be found in the manuscript's `.qmd` source file on GitHub.
 
 ```{r}
 #| label: inits-real-exp1
@@ -1195,34 +1185,9 @@ To prevent initial value rejection and ensure reliable sampling across all chain
 #| echo: false
 
 # Subset data to determine random effect dimensions
-data_fit <- exp1_data_to_include |>
+data_fit <- exp1_data_to_include |> # find data here https://github.com/jgeller112/exGauss_commentary/blob/main/Angele_et_al_2022
   filter(corr == 1 & StimulusType == "Word" & rt > 250 & rt < 1800)
 
-N_source <- length(unique(data_fit$source))
-N_target <- length(unique(data_fit$Target))
-
-# Function generating stable initial values for all Stan parameters
-init_classical <- function() {
-  list(
-    Intercept = 500, # Gaussian location (ms, identity link)
-    Intercept_sigma = log(60), # Gaussian SD (log link)
-    Intercept_tau = log(100), # Exponential tail (log link)
-    b = rep(0, 3), # Fixed effects on mu
-    b_tau = rep(0, 3), # Fixed effects on tau
-    sd_1 = rep(30, 4), # Participant SDs for mu (ms)
-    sd_2 = rep(30, 4), # Item SDs for mu (ms)
-    sd_3 = rep(0.1, 4), # Participant SDs for tau (small to prevent overflow)
-    sd_4 = rep(0.1, 4), # Item SDs for tau (small to prevent overflow)
-    z_1 = matrix(0, nrow = 4, ncol = N_source), # Participant random effects for mu
-    z_2 = matrix(0, nrow = 4, ncol = N_target), # Item random effects for mu
-    z_3 = matrix(0, nrow = 4, ncol = N_source), # Participant random effects for tau
-    z_4 = matrix(0, nrow = 4, ncol = N_target), # Item random effects for tau
-    L_1 = diag(4), # Cholesky factor for participant random effects (mu)
-    L_2 = diag(4), # Cholesky factor for item random effects (mu)
-    L_3 = diag(4), # Cholesky factor for participant random effects (tau)
-    L_4 = diag(4) # Cholesky factor for item random effects (tau)
-  )
-}
 ```
 
 The classical ex-Gaussian model for Experiment 1 is specified and fit as follows (@lst-fit-real-exp1):
@@ -1625,8 +1590,6 @@ However, this flexibility also requires careful attention to model parameterizat
 
 {{< pagebreak >}}
 
-# References
-
 # Declarations
 
 ## Funding
@@ -1660,3 +1623,7 @@ All data and code are stored here: https://github.com/jgeller112/exGauss_comment
 -   JG - Conceptualization, Data curation, Formal analysis, Project administration, Resources, Visualization, Writing—original draft
 -   BA - Formal analysis, Validation, Writing—original draft, Writing—review & editing
 -   DM - Formal analysis, Validation, Software, Writing—review & editing
+
+{{< pagebreak >}}
+
+# References
