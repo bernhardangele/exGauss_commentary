@@ -117,7 +117,7 @@ blmm_exp1_classical_rt <- brm(
   prior = priors_classical,
   family = rt_exgaussian(),
   stanvars = rt_exgaussian_stanvars(),
-  init = init_classical,
+  init = 0,
   cores = 4, 
   backend = "cmdstanr", 
   threads = threading(2)
